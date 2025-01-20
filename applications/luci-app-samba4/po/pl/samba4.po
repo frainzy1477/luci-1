@@ -1,8 +1,8 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
-"PO-Revision-Date: 2021-03-14 05:16+0000\n"
-"Last-Translator: Marcin Net <marcin.net@linux.pl>\n"
+"PO-Revision-Date: 2024-06-27 14:44+0000\n"
+"Last-Translator: Piotr Kołtun <pkoltungm@gmail.com>\n"
 "Language-Team: Polish <https://hosted.weblate.org/projects/openwrt/"
 "luciapplicationssamba4/pl/>\n"
 "Language: pl\n"
@@ -11,7 +11,7 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=3; plural=n==1 ? 0 : n%10>=2 && n%10<=4 && (n%100<10 "
 "|| n%100>=20) ? 1 : 2;\n"
-"X-Generator: Weblate 4.5.2-dev\n"
+"X-Generator: Weblate 5.7-dev\n"
 
 #: applications/luci-app-samba4/htdocs/luci-static/resources/view/samba4.js:120
 msgid "Allow guests"
@@ -26,8 +26,8 @@ msgid ""
 "Allow legacy smb(v1)/Lanman connections, needed for older devices without "
 "smb(v2.1/3) support."
 msgstr ""
-"Zezwalaj na starsze połączenia smb (v1)/Lanman, potrzebne dla starszych "
-"urządzeń bez obsługi smb (v2.1/3)."
+"Zezwalaj na starsze połączenia SMB (v1)/Lanman, potrzebne dla starszych "
+"urządzeń bez obsługi SMB (v2.1/3)."
 
 #: applications/luci-app-samba4/htdocs/luci-static/resources/view/samba4.js:117
 msgid "Allowed users"
@@ -51,7 +51,7 @@ msgstr "Opis"
 
 #: applications/luci-app-samba4/htdocs/luci-static/resources/view/samba4.js:142
 msgid "Directory mask"
-msgstr "Katalog maski"
+msgstr "Maska uprawnień do katalogu"
 
 #: applications/luci-app-samba4/htdocs/luci-static/resources/view/samba4.js:74
 msgid "Disable Active Directory Domain Controller"
@@ -113,11 +113,11 @@ msgstr "Ustawienia główne"
 
 #: applications/luci-app-samba4/root/usr/share/rpcd/acl.d/luci-app-samba4.json:3
 msgid "Grant access to LuCI app samba4"
-msgstr "Udziel dostępu LuCI do aplikacji samba4"
+msgstr "Udziel dostępu do aplikacji LuCI samba4"
 
 #: applications/luci-app-samba4/htdocs/luci-static/resources/view/samba4.js:126
 msgid "Guests only"
-msgstr "Tylko dla gości"
+msgstr "Tylko goście"
 
 #: applications/luci-app-samba4/htdocs/luci-static/resources/view/samba4.js:131
 msgid "Inherit owner"
@@ -129,7 +129,7 @@ msgstr "Interfejs"
 
 #: applications/luci-app-samba4/htdocs/luci-static/resources/view/samba4.js:35
 msgid "Listen only on the given interface or, if unspecified, on lan"
-msgstr "Słuchaj tylko na podanym interfejsie, lub jeśli nie podano na LANie"
+msgstr "Słuchaj tylko na podanym interfejsie lub, jeśli nie określono, na LAN"
 
 #: applications/luci-app-samba4/htdocs/luci-static/resources/view/samba4.js:98
 msgid "Name"
@@ -142,10 +142,10 @@ msgstr "Udziały sieciowe"
 
 #: applications/luci-app-samba4/htdocs/luci-static/resources/view/samba4.js:62
 msgid ""
-"On lower-end devices may increase speeds, by forceing synchronous I/O "
+"On lower-end devices may increase speeds, by forcing synchronous I/O "
 "instead of the default asynchronous."
 msgstr ""
-"Na urządzeniach budżetowych może zwiększyć szybkość, przez forceing "
+"Na urządzeniach budżetowych może zwiększyć szybkość, przez forcing "
 "synchroniczne I/O zamiast domyślnego asynchronicznego."
 
 #: applications/luci-app-samba4/htdocs/luci-static/resources/view/samba4.js:99
@@ -166,7 +166,7 @@ msgstr "Tylko do odczytu"
 
 #: applications/luci-app-samba4/htdocs/luci-static/resources/view/samba4.js:93
 msgid "Shared Directories"
-msgstr "Udostępniane katalogi"
+msgstr "Udostępnione katalogi"
 
 #: applications/luci-app-samba4/htdocs/luci-static/resources/view/samba4.js:82
 msgid ""
@@ -182,7 +182,7 @@ msgstr ""
 
 #: applications/luci-app-samba4/htdocs/luci-static/resources/view/samba4.js:153
 msgid "Time-machine size in GB"
-msgstr "Time-machine rozmiar w GB"
+msgstr "Rozmiar Time-machine w GB"
 
 #: applications/luci-app-samba4/htdocs/luci-static/resources/view/samba4.js:148
 msgid "Vfs objects"

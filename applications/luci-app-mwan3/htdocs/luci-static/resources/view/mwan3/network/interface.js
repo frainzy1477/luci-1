@@ -3,6 +3,7 @@
 'require fs';
 'require view';
 'require uci';
+'require ui';
 
 return view.extend({
 	load: function() {
@@ -15,7 +16,7 @@ return view.extend({
 	},
 
 	render: function (stats) {
-		var m, s, o;
+		let m, s, o;
 
 		m = new form.Map('mwan3', _('MultiWAN Manager - Interfaces'),
 			_('Mwan3 requires that all interfaces have a unique metric configured in /etc/config/network.') + '<br />' +
@@ -27,6 +28,29 @@ return view.extend({
 		s.addremove = true;
 		s.anonymous = false;
 		s.nodescriptions = true;
+
+		/* This name length error check can likely be removed when mwan3 migrates to nftables */
+		s.renderSectionAdd = function(extra_class) {
+			var el = form.GridSection.prototype.renderSectionAdd.apply(this, arguments),
+				nameEl = el.querySelector('.cbi-section-create-name');
+			ui.addValidator(nameEl, 'uciname', true, function(v) {
+				let sections = [
+					...uci.sections('mwan3', 'interface'),
+					...uci.sections('mwan3', 'member'),
+					...uci.sections('mwan3', 'policy'),
+					...uci.sections('mwan3', 'rule')
+				];
+
+				for (let j = 0; j < sections.length; j++) {
+					if (sections[j]['.name'] == v) {
+						return _('Interfaces may not share the same name as configured members, policies or rules.');
+					}
+				}
+				if (v.length > 15) return _('Name length shall not exceed 15 characters');
+				return true;
+			}, 'blur', 'keyup');
+			return el;
+		};
 
 		o = s.option(form.Flag, 'enabled', _('Enabled'));
 		o.default = false;
@@ -166,8 +190,9 @@ return view.extend({
 
 		o = s.option(form.ListValue, "timeout", _("Ping timeout"));
 		o.default = '4';
-		for (var i = 1; i <= 10; i++)
-			o.value(String(i), N_(i, '%d second', '%d seconds').format(i));
+		o.value('1', _('%d second').format('1'));
+		for (var i = 2; i <= 10; i++)
+			o.value(String(i), _('%d seconds').format(i));
 		o.modalonly = true;
 
 		o = s.option(form.ListValue, 'interval', _('Ping interval'));

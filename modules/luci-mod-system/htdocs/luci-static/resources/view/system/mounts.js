@@ -242,6 +242,7 @@ return view.extend({
 
 		o = s.taboption('general', form.Flag, 'enabled', _('Enabled'));
 		o.rmempty  = false;
+		o.default = true;
 		o.editable = true;
 
 		o = s.taboption('general', form.DummyValue, '_device', _('Device'));
@@ -331,8 +332,6 @@ return view.extend({
 		o = s.taboption('advanced', form.Value, 'options', _('Mount options'), _('See "mount" manpage for details'));
 		o.textvalue = function(section_id) { return this.cfgvalue(section_id) || 'defaults' };
 		o.placeholder = 'defaults';
-
-		s.taboption('advanced', form.Flag, 'enabled_fsck', _('Run filesystem check'), _('Run a filesystem check before mounting the device'));
 
 
 		// Swaps

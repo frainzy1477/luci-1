@@ -9,54 +9,16 @@
  * The environment settings to use for the LuCI runtime.
  */
 
-(function(window, document, undefined) {
+((window, document, undefined) => {
 	'use strict';
 
-	var env = {};
-
-	/* Object.assign polyfill for IE */
-	if (typeof Object.assign !== 'function') {
-		Object.defineProperty(Object, 'assign', {
-			value: function assign(target, varArgs) {
-				if (target == null)
-					throw new TypeError('Cannot convert undefined or null to object');
-
-				var to = Object(target);
-
-				for (var index = 1; index < arguments.length; index++)
-					if (arguments[index] != null)
-						for (var nextKey in arguments[index])
-							if (Object.prototype.hasOwnProperty.call(arguments[index], nextKey))
-								to[nextKey] = arguments[index][nextKey];
-
-				return to;
-			},
-			writable: true,
-			configurable: true
-		});
-	}
-
-	/* Promise.finally polyfill */
-	if (typeof Promise.prototype.finally !== 'function') {
-		Promise.prototype.finally = function(fn) {
-			var onFinally = function(cb) {
-				return Promise.resolve(fn.call(this)).then(cb);
-			};
-
-			return this.then(
-				function(result) { return onFinally.call(this, function() { return result }) },
-				function(reason) { return onFinally.call(this, function() { return Promise.reject(reason) }) }
-			);
-		};
-	}
+	const env = {};
 
 	/*
 	 * Class declaration and inheritance helper
 	 */
 
-	var toCamelCase = function(s) {
-		return s.replace(/(?:^|[\. -])(.)/g, function(m0, m1) { return m1.toUpperCase() });
-	};
+	const toCamelCase = s => s.replace(/(?:^|[\. -])(.)/g, (m0, m1) => m1.toUpperCase());
 
 	/**
 	 * @class baseclass
@@ -69,7 +31,11 @@
 	 * It provides simple means to create subclasses of given classes and
 	 * implements prototypal inheritance.
 	 */
-	var superContext = {}, classIndex = 0, Class = Object.assign(function() {}, {
+	const superContext = {};
+
+	let classIndex = 0;
+
+	const Class = Object.assign(function() {}, {
 		/**
 		 * Extends this base class with the properties described in
 		 * `properties` and returns a new subclassed Class instance
@@ -81,19 +47,19 @@
 		 * subclass.
 		 *
 		 * @returns {LuCI.baseclass}
-		 * Returns a new LuCI.baseclass sublassed from this class, extended
+		 * Returns a new LuCI.baseclass subclassed from this class, extended
 		 * by the given properties and with its prototype set to this base
 		 * class to enable inheritance. The resulting value represents a
 		 * class constructor and can be instantiated with `new`.
 		 */
-		extend: function(properties) {
-			var props = {
+		extend(properties) {
+			const props = {
 				__id__: { value: classIndex },
 				__base__: { value: this.prototype },
-				__name__: { value: properties.__name__ || 'anonymous' + classIndex++ }
+				__name__: { value: properties.__name__ ?? `anonymous${classIndex++}` }
 			};
 
-			var ClassConstructor = function() {
+			const ClassConstructor = function() {
 				if (!(this instanceof ClassConstructor))
 					throw new TypeError('Constructor must not be called without "new"');
 
@@ -108,14 +74,14 @@
 				}
 			};
 
-			for (var key in properties)
+			for (const key in properties)
 				if (!props[key] && properties.hasOwnProperty(key))
 					props[key] = { value: properties[key], writable: true };
 
 			ClassConstructor.prototype = Object.create(this.prototype, props);
 			ClassConstructor.prototype.constructor = ClassConstructor;
 			Object.assign(ClassConstructor, this);
-			ClassConstructor.displayName = toCamelCase(props.__name__.value + 'Class');
+			ClassConstructor.displayName = toCamelCase(`${props.__name__.value}Class`);
 
 			return ClassConstructor;
 		},
@@ -145,9 +111,8 @@
 		 * properties with its prototype set to this base class to
 		 * enable inheritance.
 		 */
-		singleton: function(properties /*, ... */) {
-			return Class.extend(properties)
-				.instantiate(Class.prototype.varargs(arguments, 1));
+		singleton(properties, ...new_args) {
+			return Class.extend(properties).instantiate(new_args);
 		},
 
 		/**
@@ -160,26 +125,21 @@
 		 * An array of arbitrary values which will be passed as arguments
 		 * to the constructor function.
 		 *
-		 * @param {...*} [new_args]
-		 * Specifies arguments to be passed to the subclass constructor
-		 * as-is in order to instantiate the new subclass.
-		 *
 		 * @returns {LuCI.baseclass}
 		 * Returns a new LuCI.baseclass instance extended by the given
 		 * properties with its prototype set to this base class to
 		 * enable inheritance.
 		 */
-		instantiate: function(args) {
-			return new (Function.prototype.bind.apply(this,
-				Class.prototype.varargs(args, 0, null)))();
+		instantiate(args) {
+			return new (Function.prototype.bind.call(this, null, ...args))();
 		},
 
 		/* unused */
-		call: function(self, method) {
+		call(self, method, ...args) {
 			if (typeof(this.prototype[method]) != 'function')
-				throw new ReferenceError(method + ' is not defined in class');
+				throw new ReferenceError(`${method} is not defined in class`);
 
-			return this.prototype[method].apply(self, self.varargs(arguments, 1));
+			return this.prototype[method].call(self, method, ...args);
 		},
 
 		/**
@@ -195,10 +155,8 @@
 		 * class or `false` if the given value is not a valid class or not
 		 * a subclass of this class'.
 		 */
-		isSubclass: function(classValue) {
-			return (classValue != null &&
-			        typeof(classValue) == 'function' &&
-			        classValue.prototype instanceof this);
+		isSubclass(classValue) {
+			return (typeof(classValue) == 'function' && classValue.prototype instanceof this);
 		},
 
 		prototype: {
@@ -218,16 +176,15 @@
 			 * would copy all values till the end.
 			 *
 			 * @param {...*} [extra_args]
-			 * Extra arguments to add to prepend to the resultung array.
+			 * Extra arguments to add to prepend to the resulting array.
 			 *
 			 * @returns {Array<*>}
 			 * Returns a new array consisting of the optional extra arguments
 			 * and the values extracted from the `args` array beginning with
 			 * `offset`.
 			 */
-			varargs: function(args, offset /*, ... */) {
-				return Array.prototype.slice.call(arguments, 2)
-					.concat(Array.prototype.slice.call(args, offset));
+			varargs(args, offset, ...extra_args) {
+				return extra_args.concat(Array.prototype.slice.call(args, offset));
 			},
 
 			/**
@@ -240,11 +197,11 @@
 			 * This function has two signatures and is sensitive to the
 			 * amount of arguments passed to it:
 			 *  - `super('key')` -
-			 *    Returns the value of `key` when found within one of the
-			 *    parent classes.
+			 *	Returns the value of `key` when found within one of the
+			 *	parent classes.
 			 *  - `super('key', ['arg1', 'arg2'])` -
-			 *    Calls the `key()` method with parameters `arg1` and `arg2`
-			 *    when found within one of the parent classes.
+			 *	Calls the `key()` method with parameters `arg1` and `arg2`
+			 *	when found within one of the parent classes.
 			 *
 			 * @memberof LuCI.baseclass
 			 * @instance
@@ -267,29 +224,29 @@
 			 * was found in the parent class chain or when the call to the
 			 * superclass method returned `null`.
 			 */
-			super: function(key, callArgs) {
+			super(key, ...callArgs) {
 				if (key == null)
 					return null;
 
-				var slotIdx = this.__id__ + '.' + key,
-				    symStack = superContext[slotIdx],
-				    protoCtx = null;
+				const slotIdx = `${this.__id__}.${key}`;
+				const symStack = superContext[slotIdx];
+				let protoCtx = null;
 
 				for (protoCtx = Object.getPrototypeOf(symStack ? symStack[0] : Object.getPrototypeOf(this));
-				     protoCtx != null && !protoCtx.hasOwnProperty(key);
-				     protoCtx = Object.getPrototypeOf(protoCtx)) {}
+					 protoCtx != null && !protoCtx.hasOwnProperty(key);
+					 protoCtx = Object.getPrototypeOf(protoCtx)) {}
 
 				if (protoCtx == null)
 					return null;
 
-				var res = protoCtx[key];
+				let res = protoCtx[key];
 
-				if (arguments.length > 1) {
+				if (callArgs.length > 0) {
 					if (typeof(res) != 'function')
-						throw new ReferenceError(key + ' is not a function in base class');
+						throw new ReferenceError(`${key} is not a function in base class`);
 
-					if (typeof(callArgs) != 'object')
-						callArgs = this.varargs(arguments, 1);
+					if (Array.isArray(callArgs[0]) || LuCI.prototype.isArguments(callArgs[0]))
+						callArgs = callArgs[0];
 
 					if (symStack)
 						symStack.unshift(protoCtx);
@@ -315,11 +272,11 @@
 			 * constructor functions `displayName` and describing the class
 			 * members and their respective types.
 			 */
-			toString: function() {
-				var s = '[' + this.constructor.displayName + ']', f = true;
-				for (var k in this) {
+			toString() {
+				let s = `[${this.constructor.displayName}]`, f = true;
+				for (const k in this) {
 					if (this.hasOwnProperty(k)) {
-						s += (f ? ' {\n' : '') + '  ' + k + ': ' + typeof(this[k]) + '\n';
+						s += `${f ? ' {\n' : ''}  ${k}: ${typeof(this[k])}\n`;
 						f = false;
 					}
 				}
@@ -338,12 +295,12 @@
 	 * The `Headers` class is an internal utility class exposed in HTTP
 	 * response objects using the `response.headers` property.
 	 */
-	var Headers = Class.extend(/** @lends LuCI.headers.prototype */ {
+	const Headers = Class.extend(/** @lends LuCI.headers.prototype */ {
 		__name__: 'LuCI.headers',
-		__init__: function(xhr) {
-			var hdrs = this.headers = {};
-			xhr.getAllResponseHeaders().split(/\r\n/).forEach(function(line) {
-				var m = /^([^:]+):(.*)$/.exec(line);
+		__init__(xhr) {
+			const hdrs = this.headers = {};
+			xhr.getAllResponseHeaders().split(/\r\n/).forEach(line => {
+				const m = /^([^:]+):(.*)$/.exec(line);
 				if (m != null)
 					hdrs[m[1].trim().toLowerCase()] = m[2].trim();
 			});
@@ -361,7 +318,7 @@
 		 * @returns {boolean}
 		 * Returns `true` if the header name is present, `false` otherwise
 		 */
-		has: function(name) {
+		has(name) {
 			return this.headers.hasOwnProperty(String(name).toLowerCase());
 		},
 
@@ -377,8 +334,8 @@
 		 * @returns {string|null}
 		 * The value of the given header name or `null` if the header isn't present.
 		 */
-		get: function(name) {
-			var key = String(name).toLowerCase();
+		get(name) {
+			const key = String(name).toLowerCase();
 			return this.headers.hasOwnProperty(key) ? this.headers[key] : null;
 		}
 	});
@@ -391,9 +348,9 @@
 	 *
 	 * The `Response` class is an internal utility class representing HTTP responses.
 	 */
-	var Response = Class.extend({
+	const Response = Class.extend({
 		__name__: 'LuCI.response',
-		__init__: function(xhr, url, duration, headers, content) {
+		__init__(xhr, url, duration, headers, content) {
 			/**
 			 * Describes whether the response is successful (status codes `200..299`) or not
 			 * @instance
@@ -494,8 +451,8 @@
 		 * @returns {LuCI.response}
 		 * The cloned `Response` instance.
 		 */
-		clone: function(content) {
-			var copy = new Response(this.xhr, this.url, this.duration, this.headers, content);
+		clone(content) {
+			const copy = new Response(this.xhr, this.url, this.duration, this.headers, content);
 
 			copy.ok = this.ok;
 			copy.status = this.status;
@@ -515,7 +472,7 @@
 		 * @returns {*}
 		 * The parsed JSON data.
 		 */
-		json: function() {
+		json() {
 			if (this.responseJSON == null)
 				this.responseJSON = JSON.parse(this.responseText);
 
@@ -530,7 +487,7 @@
 		 * @returns {string}
 		 * The response content.
 		 */
-		text: function() {
+		text() {
 			if (this.responseText == null && this.responseJSON != null)
 				this.responseText = JSON.stringify(this.responseJSON);
 
@@ -545,13 +502,13 @@
 		 * @returns {Blob}
 		 * The response content as blob.
 		 */
-		blob: function() {
+		blob() {
 			return this.responseBlob;
 		}
 	});
 
 
-	var requestQueue = [];
+	const requestQueue = [];
 
 	function isQueueableRequest(opt) {
 		if (!classes.rpc)
@@ -563,7 +520,7 @@
 		if (opt.nobatch === true)
 			return false;
 
-		var rpcBaseURL = Request.expandURL(classes.rpc.getBaseURL());
+		const rpcBaseURL = Request.expandURL(classes.rpc.getBaseURL());
 
 		return (rpcBaseURL != null && opt.url.indexOf(rpcBaseURL) == 0);
 	}
@@ -572,18 +529,17 @@
 		if (!requestQueue.length)
 			return;
 
-		var reqopt = Object.assign({}, requestQueue[0][0], { content: [], nobatch: true }),
-		    batch = [];
+		const reqopt = Object.assign({}, requestQueue[0][0], { content: [], nobatch: true }), batch = [];
 
-		for (var i = 0; i < requestQueue.length; i++) {
+		for (let i = 0; i < requestQueue.length; i++) {
 			batch[i] = requestQueue[i];
 			reqopt.content[i] = batch[i][0].content;
 		}
 
 		requestQueue.length = 0;
 
-		Request.request(rpcBaseURL, reqopt).then(function(reply) {
-			var json = null, req = null;
+		Request.request(rpcBaseURL, reqopt).then(reply => {
+			let json = null, req = null;
 
 			try { json = reply.json() }
 			catch(e) { }
@@ -593,8 +549,8 @@
 					req[2].call(reqopt, reply.clone(json.shift()));
 				else
 					req[1].call(reqopt, new Error('No related RPC reply'));
-		}).catch(function(error) {
-			var req = null;
+		}).catch(error => {
+			let req = null;
 
 			while ((req = batch.shift()) != null)
 				req[1].call(reqopt, error);
@@ -610,7 +566,7 @@
 	 * The `Request` class allows initiating HTTP requests and provides utilities
 	 * for dealing with responses.
 	 */
-	var Request = Class.singleton(/** @lends LuCI.request.prototype */ {
+	const Request = Class.singleton(/** @lends LuCI.request.prototype */ {
 		__name__: 'LuCI.request',
 
 		interceptors: [],
@@ -627,9 +583,9 @@
 		 * The absolute URL derived from the given one, or the original URL
 		 * if it already was absolute.
 		 */
-		expandURL: function(url) {
+		expandURL(url) {
 			if (!/^(?:[^/]+:)?\/\//.test(url))
-				url = location.protocol + '//' + location.host + url;
+				url = `${location.protocol}//${location.host}${url}`;
 
 			return url;
 		},
@@ -694,121 +650,122 @@
 		 * @returns {Promise<LuCI.response>}
 		 * The resulting HTTP response.
 		 */
-		request: function(target, options) {
-			var state = { xhr: new XMLHttpRequest(), url: this.expandURL(target), start: Date.now() },
-			    opt = Object.assign({}, options, state),
-			    content = null,
-			    contenttype = null,
-			    callback = this.handleReadyStateChange;
+		request(target, options) {
+			return Promise.resolve(target).then(url => {
+				const state = { xhr: new XMLHttpRequest(), url: this.expandURL(url), start: Date.now() };
+				const opt = Object.assign({}, options, state);
+				let content = null;
+				let contenttype = null;
+				const callback = this.handleReadyStateChange;
 
-			return new Promise(function(resolveFn, rejectFn) {
-				opt.xhr.onreadystatechange = callback.bind(opt, resolveFn, rejectFn);
-				opt.method = String(opt.method || 'GET').toUpperCase();
+				return new Promise((resolveFn, rejectFn) => {
+					opt.xhr.onreadystatechange = callback.bind(opt, resolveFn, rejectFn);
+					opt.method = String(opt.method ?? 'GET').toUpperCase();
 
-				if ('query' in opt) {
-					var q = (opt.query != null) ? Object.keys(opt.query).map(function(k) {
-						if (opt.query[k] != null) {
-							var v = (typeof(opt.query[k]) == 'object')
-								? JSON.stringify(opt.query[k])
-								: String(opt.query[k]);
+					if ('query' in opt) {
+						const q = (opt.query != null) ? Object.keys(opt.query).map(k => {
+							if (opt.query[k] != null) {
+								const v = (typeof(opt.query[k]) == 'object')
+									? JSON.stringify(opt.query[k])
+									: String(opt.query[k]);
 
-							return '%s=%s'.format(encodeURIComponent(k), encodeURIComponent(v));
-						}
-						else {
-							return encodeURIComponent(k);
-						}
-					}).join('&') : '';
+								return '%s=%s'.format(encodeURIComponent(k), encodeURIComponent(v));
+							}
+							else {
+								return encodeURIComponent(k);
+							}
+						}).join('&') : '';
 
-					if (q !== '') {
-						switch (opt.method) {
-						case 'GET':
-						case 'HEAD':
-						case 'OPTIONS':
-							opt.url += ((/\?/).test(opt.url) ? '&' : '?') + q;
-							break;
+						if (q !== '') {
+							switch (opt.method) {
+							case 'GET':
+							case 'HEAD':
+							case 'OPTIONS':
+								opt.url += ((/\?/).test(opt.url) ? '&' : '?') + q;
+								break;
 
-						default:
-							if (content == null) {
-								content = q;
-								contenttype = 'application/x-www-form-urlencoded';
+							default:
+								if (content == null) {
+									content = q;
+									contenttype = 'application/x-www-form-urlencoded';
+								}
 							}
 						}
 					}
-				}
 
-				if (!opt.cache)
-					opt.url += ((/\?/).test(opt.url) ? '&' : '?') + (new Date()).getTime();
+					if (!opt.cache)
+						opt.url += ((/\?/).test(opt.url) ? '&' : '?') + (new Date()).getTime();
 
-				if (isQueueableRequest(opt)) {
-					requestQueue.push([opt, rejectFn, resolveFn]);
-					requestAnimationFrame(flushRequestQueue);
-					return;
-				}
-
-				if ('username' in opt && 'password' in opt)
-					opt.xhr.open(opt.method, opt.url, true, opt.username, opt.password);
-				else
-					opt.xhr.open(opt.method, opt.url, true);
-
-				opt.xhr.responseType = opt.responseType || 'text';
-
-				if ('overrideMimeType' in opt.xhr)
-					opt.xhr.overrideMimeType('application/octet-stream');
-
-				if ('timeout' in opt)
-					opt.xhr.timeout = +opt.timeout;
-
-				if ('credentials' in opt)
-					opt.xhr.withCredentials = !!opt.credentials;
-
-				if (opt.content != null) {
-					switch (typeof(opt.content)) {
-					case 'function':
-						content = opt.content(xhr);
-						break;
-
-					case 'object':
-						if (!(opt.content instanceof FormData)) {
-							content = JSON.stringify(opt.content);
-							contenttype = 'application/json';
-						}
-						else {
-							content = opt.content;
-						}
-						break;
-
-					default:
-						content = String(opt.content);
+					if (isQueueableRequest(opt)) {
+						requestQueue.push([opt, rejectFn, resolveFn]);
+						requestAnimationFrame(flushRequestQueue);
+						return;
 					}
-				}
 
-				if ('headers' in opt)
-					for (var header in opt.headers)
-						if (opt.headers.hasOwnProperty(header)) {
-							if (header.toLowerCase() != 'content-type')
-								opt.xhr.setRequestHeader(header, opt.headers[header]);
-							else
-								contenttype = opt.headers[header];
+					if ('username' in opt && 'password' in opt)
+						opt.xhr.open(opt.method, opt.url, true, opt.username, opt.password);
+					else
+						opt.xhr.open(opt.method, opt.url, true);
+
+					opt.xhr.responseType = opt.responseType ?? 'text';
+
+					if ('overrideMimeType' in opt.xhr)
+						opt.xhr.overrideMimeType('application/octet-stream');
+
+					if ('timeout' in opt)
+						opt.xhr.timeout = +opt.timeout;
+
+					if ('credentials' in opt)
+						opt.xhr.withCredentials = !!opt.credentials;
+
+					if (opt.content != null) {
+						switch (typeof(opt.content)) {
+						case 'function':
+							content = opt.content(opt.xhr);
+							break;
+
+						case 'object':
+							if (!(opt.content instanceof FormData)) {
+								content = JSON.stringify(opt.content);
+								contenttype = 'application/json';
+							}
+							else {
+								content = opt.content;
+							}
+							break;
+
+						default:
+							content = String(opt.content);
 						}
+					}
 
-				if ('progress' in opt && 'upload' in opt.xhr)
-					opt.xhr.upload.addEventListener('progress', opt.progress);
+					if ('headers' in opt)
+						for (const header in opt.headers)
+							if (opt.headers.hasOwnProperty(header)) {
+								if (header.toLowerCase() != 'content-type')
+									opt.xhr.setRequestHeader(header, opt.headers[header]);
+								else
+									contenttype = opt.headers[header];
+							}
 
-				if (contenttype != null)
-					opt.xhr.setRequestHeader('Content-Type', contenttype);
+					if ('progress' in opt && 'upload' in opt.xhr)
+						opt.xhr.upload.addEventListener('progress', opt.progress);
 
-				try {
-					opt.xhr.send(content);
-				}
-				catch (e) {
-					rejectFn.call(opt, e);
-				}
+					if (contenttype != null)
+						opt.xhr.setRequestHeader('Content-Type', contenttype);
+
+					try {
+						opt.xhr.send(content);
+					}
+					catch (e) {
+						rejectFn.call(opt, e);
+					}
+				});
 			});
 		},
 
-		handleReadyStateChange: function(resolveFn, rejectFn, ev) {
-			var xhr = this.xhr,
-			    duration = Date.now() - this.start;
+		handleReadyStateChange(resolveFn, rejectFn, ev) {
+			const xhr = this.xhr, duration = Date.now() - this.start;
 
 			if (xhr.readyState !== 4)
 				return;
@@ -820,10 +777,10 @@
 					rejectFn.call(this, new Error('XHR request aborted by browser'));
 			}
 			else {
-				var response = new Response(
-					xhr, xhr.responseURL || this.url, duration);
+				const response = new Response(
+					xhr, xhr.responseURL ?? this.url, duration);
 
-				Promise.all(Request.interceptors.map(function(fn) { return fn(response) }))
+				Promise.all(Request.interceptors.map(fn => fn(response)))
 					.then(resolveFn.bind(this, response))
 					.catch(rejectFn.bind(this));
 			}
@@ -834,7 +791,7 @@
 		 *
 		 * @instance
 		 * @memberof LuCI.request
-		 * @param {string} target
+		 * @param {string} url
 		 * The URL to request.
 		 *
 		 * @param {LuCI.request.RequestOptions} [options]
@@ -843,7 +800,7 @@
 		 * @returns {Promise<LuCI.response>}
 		 * The resulting HTTP response.
 		 */
-		get: function(url, options) {
+		get(url, options) {
 			return this.request(url, Object.assign({ method: 'GET' }, options));
 		},
 
@@ -852,7 +809,7 @@
 		 *
 		 * @instance
 		 * @memberof LuCI.request
-		 * @param {string} target
+		 * @param {string} url
 		 * The URL to request.
 		 *
 		 * @param {*} [data]
@@ -864,7 +821,7 @@
 		 * @returns {Promise<LuCI.response>}
 		 * The resulting HTTP response.
 		 */
-		post: function(url, data, options) {
+		post(url, data, options) {
 			return this.request(url, Object.assign({ method: 'POST', content: data }, options));
 		},
 
@@ -890,7 +847,7 @@
 		 * @returns {LuCI.request.interceptorFn}
 		 * The registered function.
 		 */
-		addInterceptor: function(interceptorFn) {
+		addInterceptor(interceptorFn) {
 			if (typeof(interceptorFn) == 'function')
 				this.interceptors.push(interceptorFn);
 			return interceptorFn;
@@ -909,8 +866,9 @@
 		 * @returns {boolean}
 		 * Returns `true` if any function has been removed, else `false`.
 		 */
-		removeInterceptor: function(interceptorFn) {
-			var oldlen = this.interceptors.length, i = oldlen;
+		removeInterceptor(interceptorFn) {
+			const oldlen = this.interceptors.length;
+			let i = oldlen;
 			while (i--)
 				if (this.interceptors[i] === interceptorFn)
 					this.interceptors.splice(i, 1);
@@ -923,7 +881,7 @@
 		 * @hideconstructor
 		 * @classdesc
 		 *
-		 * The `Request.poll` class provides some convience wrappers around
+		 * The `Request.poll` class provides some convenience wrappers around
 		 * {@link LuCI.poll} mainly to simplify registering repeating HTTP
 		 * request calls as polling functions.
 		 */
@@ -970,27 +928,24 @@
 			 * @returns {function}
 			 * Returns the internally created poll function.
 			 */
-			add: function(interval, url, options, callback) {
+			add(interval, url, options, callback) {
 				if (isNaN(interval) || interval <= 0)
 					throw new TypeError('Invalid poll interval');
 
-				var ival = interval >>> 0,
-				    opts = Object.assign({}, options, { timeout: ival * 1000 - 5 });
+				const ival = interval >>> 0, opts = Object.assign({}, options, { timeout: ival * 1000 - 5 });
 
-				var fn = function() {
-					return Request.request(url, options).then(function(res) {
-						if (!Poll.active())
-							return;
+				const fn = () => Request.request(url, opts).then(res => {
+					if (!Poll.active())
+						return;
 
-						var res_json = null;
-						try {
-							res_json = res.json();
-						}
-						catch (err) {}
+					let res_json = null;
+					try {
+						res_json = res.json();
+					}
+					catch (err) {}
 
-						callback(res, res_json, res.duration);
-					});
-				};
+					callback(res, res_json, res.duration);
+				});
 
 				return (Poll.add(fn, ival) ? fn : null);
 			},
@@ -1008,7 +963,7 @@
 			 * @returns {boolean}
 			 * Returns `true` if any function has been removed, else `false`.
 			 */
-			remove: function(entry) { return Poll.remove(entry) },
+			remove(entry) { return Poll.remove(entry) },
 
 			/**
 			  * Alias for {@link LuCI.poll.start LuCI.poll.start()}.
@@ -1016,7 +971,7 @@
 			  * @instance
 			  * @memberof LuCI.request.poll
 			  */
-			start: function() { return Poll.start() },
+			start() { return Poll.start() },
 
 			/**
 			  * Alias for {@link LuCI.poll.stop LuCI.poll.stop()}.
@@ -1024,7 +979,7 @@
 			  * @instance
 			  * @memberof LuCI.request.poll
 			  */
-			stop: function() { return Poll.stop() },
+			stop() { return Poll.stop() },
 
 			/**
 			  * Alias for {@link LuCI.poll.active LuCI.poll.active()}.
@@ -1032,7 +987,7 @@
 			  * @instance
 			  * @memberof LuCI.request.poll
 			  */
-			active: function() { return Poll.active() }
+			active() { return Poll.active() }
 		}
 	});
 
@@ -1046,14 +1001,14 @@
 	 * as well as starting, stopping and querying the state of the polling
 	 * loop.
 	 */
-	var Poll = Class.singleton(/** @lends LuCI.poll.prototype */ {
+	const Poll = Class.singleton(/** @lends LuCI.poll.prototype */ {
 		__name__: 'LuCI.poll',
 
 		queue: [],
 
 		/**
 		 * Add a new operation to the polling loop. If the polling loop is not
-		 * already started at this point, it will be implicitely started.
+		 * already started at this point, it will be implicitly started.
 		 *
 		 * @instance
 		 * @memberof LuCI.poll
@@ -1070,21 +1025,21 @@
 		 * Returns `true` if the function has been added or `false` if it
 		 * already is registered.
 		 */
-		add: function(fn, interval) {
+		add(fn, interval) {
 			if (interval == null || interval <= 0)
 				interval = env.pollinterval || null;
 
 			if (isNaN(interval) || typeof(fn) != 'function')
 				throw new TypeError('Invalid argument to LuCI.poll.add()');
 
-			for (var i = 0; i < this.queue.length; i++)
+			for (let i = 0; i < this.queue.length; i++)
 				if (this.queue[i].fn === fn)
 					return false;
 
-			var e = {
+			const e = {
 				r: true,
 				i: interval >>> 0,
-				fn: fn
+				fn
 			};
 
 			this.queue.push(e);
@@ -1096,8 +1051,8 @@
 		},
 
 		/**
-		 * Remove an operation from the polling loop. If no further operatons
-		 * are registered, the polling loop is implicitely stopped.
+		 * Remove an operation from the polling loop. If no further operations
+		 * are registered, the polling loop is implicitly stopped.
 		 *
 		 * @instance
 		 * @memberof LuCI.poll
@@ -1111,13 +1066,13 @@
 		 * Returns `true` if the function has been removed or `false` if it
 		 * wasn't found.
 		 */
-		remove: function(fn) {
+		remove(fn) {
 			if (typeof(fn) != 'function')
 				throw new TypeError('Invalid argument to LuCI.poll.remove()');
 
-			var len = this.queue.length;
+			const len = this.queue.length;
 
-			for (var i = len; i > 0; i--)
+			for (let i = len; i > 0; i--)
 				if (this.queue[i-1].fn === fn)
 					this.queue.splice(i-1, 1);
 
@@ -1137,7 +1092,7 @@
 		 * Returns `true` if polling has been started (or if no functions
 		 * where registered) or `false` when the polling loop already runs.
 		 */
-		start: function() {
+		start() {
 			if (this.active())
 				return false;
 
@@ -1159,10 +1114,10 @@
 		 * @instance
 		 * @memberof LuCI.poll
 		 * @returns {boolean}
-		 * Returns `true` if polling has been stopped or `false` if it din't
+		 * Returns `true` if polling has been stopped or `false` if it didn't
 		 * run to begin with.
 		 */
-		stop: function() {
+		stop() {
 			if (!this.active())
 				return false;
 
@@ -1174,8 +1129,8 @@
 		},
 
 		/* private */
-		step: function() {
-			for (var i = 0, e = null; (e = Poll.queue[i]) != null; i++) {
+		step() {
+			for (let i = 0, e = null; (e = Poll.queue[i]) != null; i++) {
 				if ((Poll.tick % e.i) != 0)
 					continue;
 
@@ -1197,7 +1152,7 @@
 		 * @memberof LuCI.poll
 		 * @returns {boolean} - Returns `true` if polling is active, else `false`.
 		 */
-		active: function() {
+		active() {
 			return (this.timer != null);
 		}
 	});
@@ -1214,7 +1169,7 @@
 	 * To import the class in views, use `'require dom'`, to import it in
 	 * external JavaScript, use `L.require("dom").then(...)`.
 	 */
-	var DOM = Class.singleton(/** @lends LuCI.dom.prototype */ {
+	const DOM = Class.singleton(/** @lends LuCI.dom.prototype */ {
 		__name__: 'LuCI.dom',
 
 		/**
@@ -1228,7 +1183,7 @@
 		 * @returns {boolean}
 		 * Returns `true` if the value is a DOM `Node`, else `false`.
 		 */
-		elem: function(e) {
+		elem(e) {
 			return (e != null && typeof(e) == 'object' && 'nodeType' in e);
 		},
 
@@ -1247,25 +1202,13 @@
 		 * Returns the first DOM `Node` extracted from the HTML fragment or
 		 * `null` on parsing failures or if no element could be found.
 		 */
-		parse: function(s) {
-			var elem;
-
+		parse(s) {
 			try {
-				domParser = domParser || new DOMParser();
-				elem = domParser.parseFromString(s, 'text/html').body.firstChild;
+				return domParser.parseFromString(s, 'text/html').body.firstChild;
 			}
-			catch(e) {}
-
-			if (!elem) {
-				try {
-					dummyElem = dummyElem || document.createElement('div');
-					dummyElem.innerHTML = s;
-					elem = dummyElem.firstChild;
-				}
-				catch (e) {}
+			catch(e) {
+				return null;
 			}
-
-			return elem || null;
 		},
 
 		/**
@@ -1289,8 +1232,8 @@
 		 * or `false` when the node argument is no valid DOM `Node` or the
 		 * selector didn't match.
 		 */
-		matches: function(node, selector) {
-			var m = this.elem(node) ? node.matches || node.msMatchesSelector : null;
+		matches(node, selector) {
+			const m = this.elem(node) ? (node.matches ?? node.msMatchesSelector) : null;
 			return m ? m.call(node, selector) : false;
 		},
 
@@ -1316,7 +1259,7 @@
 		 * `null` when the node argument is no valid DOM `Node` or the
 		 * selector didn't match any parent.
 		 */
-		parent: function(node, selector) {
+		parent(node, selector) {
 			if (this.elem(node) && node.closest)
 				return node.closest(selector);
 
@@ -1338,7 +1281,7 @@
 		 * The `Node` argument to append the children to.
 		 *
 		 * @param {*} [children]
-		 * The childrens to append to the given node.
+		 * The children to append to the given node.
 		 *
 		 * When `children` is an array, then each item of the array
 		 * will be either appended as child element or text node,
@@ -1353,11 +1296,11 @@
 		 * as first and the return value of the `children` function as
 		 * second parameter.
 		 *
-		 * When `children` is is a DOM `Node` instance, it will be
+		 * When `children` is a DOM `Node` instance, it will be
 		 * appended to the given `node`.
 		 *
 		 * When `children` is any other non-`null` value, it will be
-		 * converted to a string and appened to the `innerHTML` property
+		 * converted to a string and appended to the `innerHTML` property
 		 * of the given `node`.
 		 *
 		 * @returns {Node|null}
@@ -1365,16 +1308,16 @@
 		 * if either the `node` argument was no valid DOM `node` or if the
 		 * `children` was `null` or didn't result in further DOM nodes.
 		 */
-		append: function(node, children) {
+		append(node, children) {
 			if (!this.elem(node))
 				return null;
 
 			if (Array.isArray(children)) {
-				for (var i = 0; i < children.length; i++)
+				for (let i = 0; i < children.length; i++)
 					if (this.elem(children[i]))
 						node.appendChild(children[i]);
 					else if (children !== null && children !== undefined)
-						node.appendChild(document.createTextNode('' + children[i]));
+						node.appendChild(document.createTextNode(`${children[i]}`));
 
 				return node.lastChild;
 			}
@@ -1385,7 +1328,7 @@
 				return node.appendChild(children);
 			}
 			else if (children !== null && children !== undefined) {
-				node.innerHTML = '' + children;
+				node.innerHTML = `${children}`;
 				return node.lastChild;
 			}
 
@@ -1396,7 +1339,7 @@
 		 * Replaces the content of the given node with the given children.
 		 *
 		 * This function first removes any children of the given DOM
-		 * `Node` and then adds the given given children following the
+		 * `Node` and then adds the given children following the
 		 * rules outlined below.
 		 *
 		 * @instance
@@ -1405,7 +1348,7 @@
 		 * The `Node` argument to replace the children of.
 		 *
 		 * @param {*} [children]
-		 * The childrens to replace into the given node.
+		 * The children to replace into the given node.
 		 *
 		 * When `children` is an array, then each item of the array
 		 * will be either appended as child element or text node,
@@ -1420,11 +1363,11 @@
 		 * as first and the return value of the `children` function as
 		 * second parameter.
 		 *
-		 * When `children` is is a DOM `Node` instance, it will be
+		 * When `children` is a DOM `Node` instance, it will be
 		 * appended to the given `node`.
 		 *
 		 * When `children` is any other non-`null` value, it will be
-		 * converted to a string and appened to the `innerHTML` property
+		 * converted to a string and appended to the `innerHTML` property
 		 * of the given `node`.
 		 *
 		 * @returns {Node|null}
@@ -1432,13 +1375,13 @@
 		 * if either the `node` argument was no valid DOM `node` or if the
 		 * `children` was `null` or didn't result in further DOM nodes.
 		 */
-		content: function(node, children) {
+		content(node, children) {
 			if (!this.elem(node))
 				return null;
 
-			var dataNodes = node.querySelectorAll('[data-idref]');
+			const dataNodes = node.querySelectorAll('[data-idref]');
 
-			for (var i = 0; i < dataNodes.length; i++)
+			for (let i = 0; i < dataNodes.length; i++)
 				delete this.registry[dataNodes[i].getAttribute('data-idref')];
 
 			while (node.firstChild)
@@ -1478,13 +1421,13 @@
 		 *
 		 * When `val` is of any other type, it will be added as attribute
 		 * to the given `node` as-is, with the underlying `setAttribute()`
-		 * call implicitely turning it into a string.
+		 * call implicitly turning it into a string.
 		 */
-		attr: function(node, key, val) {
+		attr(node, key, val) {
 			if (!this.elem(node))
 				return null;
 
-			var attr = null;
+			let attr = null;
 
 			if (typeof(key) === 'object' && key !== null)
 				attr = key;
@@ -1558,18 +1501,18 @@
 		 * @returns {Node}
 		 * Returns the newly created `Node`.
 		 */
-		create: function() {
-			var html = arguments[0],
-			    attr = arguments[1],
-			    data = arguments[2],
-			    elem;
+		create() {
+			const html = arguments[0];
+			let attr = arguments[1];
+			let data = arguments[2];
+			let elem;
 
 			if (!(attr instanceof Object) || Array.isArray(attr))
 				data = attr, attr = null;
 
 			if (Array.isArray(html)) {
 				elem = document.createDocumentFragment();
-				for (var i = 0; i < html.length; i++)
+				for (let i = 0; i < html.length; i++)
 					elem.appendChild(this.create(html[i]));
 			}
 			else if (this.elem(html)) {
@@ -1606,16 +1549,16 @@
 		 * number of arguments passed to it.
 		 *
 		 *  - `dom.data(node)` -
-		 *     Fetches all data associated with the given node.
+		 *	 Fetches all data associated with the given node.
 		 *  - `dom.data(node, key)` -
-		 *     Fetches a specific key associated with the given node.
+		 *	 Fetches a specific key associated with the given node.
 		 *  - `dom.data(node, key, val)` -
-		 *     Sets a specific key to the given value associated with the
-		 *     given node.
+		 *	 Sets a specific key to the given value associated with the
+		 *	 given node.
 		 *  - `dom.data(node, null)` -
-		 *     Clears any data associated with the node.
+		 *	 Clears any data associated with the node.
 		 *  - `dom.data(node, key, null)` -
-		 *     Clears the given key associated with the node.
+		 *	 Clears the given key associated with the node.
 		 *
 		 * @instance
 		 * @memberof LuCI.dom
@@ -1634,11 +1577,11 @@
 		 * Returns the get or set value, or `null` when no value could
 		 * be found.
 		 */
-		data: function(node, key, val) {
-			if (!node || !node.getAttribute)
+		data(node, key, val) {
+			if (!node?.getAttribute)
 				return null;
 
-			var id = node.getAttribute('data-idref');
+			let id = node.getAttribute('data-idref');
 
 			/* clear all data */
 			if (arguments.length > 1 && key == null) {
@@ -1717,7 +1660,7 @@
 		 * @returns {Class}
 		 * Returns the bound class instance.
 		 */
-		bindClassInstance: function(node, inst) {
+		bindClassInstance(node, inst) {
 			if (!(inst instanceof Class))
 				LuCI.prototype.error('TypeError', 'Argument must be a class instance');
 
@@ -1737,8 +1680,8 @@
 		 * Returns the founds class instance if any or `null` if no bound
 		 * class could be found on the node itself or any of its parents.
 		 */
-		findClassInstance: function(node) {
-			var inst = null;
+		findClassInstance(node) {
+			let inst = null;
 
 			do {
 				inst = this.data(node, '_class');
@@ -1771,13 +1714,13 @@
 		 * no bound class instance could be found, or if the found
 		 * instance didn't have the requested `method`.
 		 */
-		callClassMethod: function(node, method /*, ... */) {
-			var inst = this.findClassInstance(node);
+		callClassMethod(node, method, ...args) {
+			const inst = this.findClassInstance(node);
 
-			if (inst == null || typeof(inst[method]) != 'function')
+			if (typeof(inst?.[method]) != 'function')
 				return null;
 
-			return inst[method].apply(inst, inst.varargs(arguments, 2));
+			return inst[method].call(inst, ...args);
 		},
 
 		/**
@@ -1817,9 +1760,9 @@
 		 * any children node either has a `hidden` CSS class or a `false`
 		 * result when testing it using the given `ignoreFn`.
 		 */
-		isEmpty: function(node, ignoreFn) {
-			for (var child = node.firstElementChild; child != null; child = child.nextElementSibling)
-				if (!child.classList.contains('hidden') && (!ignoreFn || !ignoreFn(child)))
+		isEmpty(node, ignoreFn) {
+			for (let child = node?.firstElementChild; child != null; child = child.nextElementSibling)
+				if (!child.classList.contains('hidden') && !ignoreFn?.(child))
 					return false;
 
 			return true;
@@ -1834,7 +1777,7 @@
 	 *
 	 * The `session` class provides various session related functionality.
 	 */
-	var Session = Class.singleton(/** @lends LuCI.session.prototype */ {
+	const Session = Class.singleton(/** @lends LuCI.session.prototype */ {
 		__name__: 'LuCI.session',
 
 		/**
@@ -1843,8 +1786,8 @@
 		 * @returns {string}
 		 * Returns the current session ID.
 		 */
-		getID: function() {
-			return env.sessionid || '00000000000000000000000000000000';
+		getID() {
+			return env.sessionid ?? '00000000000000000000000000000000';
 		},
 
 		/**
@@ -1853,8 +1796,8 @@
 		 * @returns {string|null}
 		 * Returns the current session token or `null` if not logged in.
 		 */
-		getToken: function() {
-			return env.token || null;
+		getToken() {
+			return env.token ?? null;
 		},
 
 		/**
@@ -1868,11 +1811,11 @@
 		 * Returns the stored session data or `null` if the given key wasn't
 		 * found.
 		 */
-		getLocalData: function(key) {
+		getLocalData(key) {
 			try {
-				var sid = this.getID(),
-				    item = 'luci-session-store',
-				    data = JSON.parse(window.sessionStorage.getItem(item));
+				const sid = this.getID();
+				const item = 'luci-session-store';
+				let data = JSON.parse(window.sessionStorage.getItem(item));
 
 				if (!LuCI.prototype.isObject(data) || !data.hasOwnProperty(sid)) {
 					data = {};
@@ -1902,14 +1845,14 @@
 		 * @returns {boolean}
 		 * Returns `true` if the data could be stored or `false` on error.
 		 */
-		setLocalData: function(key, value) {
+		setLocalData(key, value) {
 			if (key == null)
 				return false;
 
 			try {
-				var sid = this.getID(),
-				    item = 'luci-session-store',
-				    data = JSON.parse(window.sessionStorage.getItem(item));
+				const sid = this.getID();
+				const item = 'luci-session-store';
+				let data = JSON.parse(window.sessionStorage.getItem(item));
 
 				if (!LuCI.prototype.isObject(data) || !data.hasOwnProperty(sid)) {
 					data = {};
@@ -1940,18 +1883,18 @@
 	 * The `view` class forms the basis of views and provides a standard
 	 * set of methods to inherit from.
 	 */
-	var View = Class.extend(/** @lends LuCI.view.prototype */ {
+	const View = Class.extend(/** @lends LuCI.view.prototype */ {
 		__name__: 'LuCI.view',
 
-		__init__: function() {
-			var vp = document.getElementById('view');
+		__init__() {
+			const vp = document.getElementById('view');
 
 			DOM.content(vp, E('div', { 'class': 'spinning' }, _('Loading view…')));
 
 			return Promise.resolve(this.load())
 				.then(LuCI.prototype.bind(this.render, this))
 				.then(LuCI.prototype.bind(function(nodes) {
-					var vp = document.getElementById('view');
+					const vp = document.getElementById('view');
 
 					DOM.content(vp, nodes);
 					DOM.append(vp, this.addFooter());
@@ -1978,7 +1921,7 @@
 		 * @returns {*|Promise<*>}
 		 * May return any value or a Promise resolving to any value.
 		 */
-		load: function() {},
+		load() {},
 
 		/**
 		 * The render function is invoked after the
@@ -2010,7 +1953,7 @@
 		 * Should return a DOM `Node` value or a `Promise` resolving
 		 * to a `Node` value.
 		 */
-		render: function() {},
+		render() {},
 
 		/**
 		 * The handleSave function is invoked when the user clicks
@@ -2041,13 +1984,13 @@
 		 * Any return values of this function are discarded, but
 		 * passed through `Promise.resolve()` to ensure that any
 		 * returned promise runs to completion before the button
-		 * is reenabled.
+		 * is re-enabled.
 		 */
-		handleSave: function(ev) {
-			var tasks = [];
+		handleSave(ev) {
+			const tasks = [];
 
 			document.getElementById('maincontent')
-				.querySelectorAll('.cbi-map').forEach(function(map) {
+				.querySelectorAll('.cbi-map').forEach(map => {
 					tasks.push(DOM.callClassMethod(map, 'save'));
 				});
 
@@ -2085,10 +2028,10 @@
 		 * Any return values of this function are discarded, but
 		 * passed through `Promise.resolve()` to ensure that any
 		 * returned promise runs to completion before the button
-		 * is reenabled.
+		 * is re-enabled.
 		 */
-		handleSaveApply: function(ev, mode) {
-			return this.handleSave(ev).then(function() {
+		handleSaveApply(ev, mode) {
+			return this.handleSave(ev).then(() => {
 				classes.ui.changes.apply(mode == '0');
 			});
 		},
@@ -2122,13 +2065,13 @@
 		 * Any return values of this function are discarded, but
 		 * passed through `Promise.resolve()` to ensure that any
 		 * returned promise runs to completion before the button
-		 * is reenabled.
+		 * is re-enabled.
 		 */
-		handleReset: function(ev) {
-			var tasks = [];
+		handleReset(ev) {
+			const tasks = [];
 
 			document.getElementById('maincontent')
-				.querySelectorAll('.cbi-map').forEach(function(map) {
+				.querySelectorAll('.cbi-map').forEach(map => {
 					tasks.push(DOM.callClassMethod(map, 'reset'));
 				});
 
@@ -2158,14 +2101,14 @@
 		 * or an empty `DocumentFragment` if all three `handle*()`
 		 * methods are overwritten with `null`.
 		 */
-		addFooter: function() {
-			var footer = E([]),
-			    vp = document.getElementById('view'),
-			    hasmap = false,
-			    readonly = true;
+		addFooter() {
+			const footer = E([]);
+			const vp = document.getElementById('view');
+			let hasmap = false;
+			let readonly = true;
 
-			vp.querySelectorAll('.cbi-map').forEach(function(map) {
-				var m = DOM.findClassInstance(map);
+			vp.querySelectorAll('.cbi-map').forEach(map => {
+				const m = DOM.findClassInstance(map);
 				if (m) {
 					hasmap = true;
 
@@ -2177,7 +2120,7 @@
 			if (!hasmap)
 				readonly = !LuCI.prototype.hasViewPermission();
 
-			var saveApplyBtn = this.handleSaveApply ? new classes.ui.ComboButton('0', {
+			const saveApplyBtn = this.handleSaveApply ? new classes.ui.ComboButton('0', {
 				0: [ _('Save & Apply') ],
 				1: [ _('Apply unchecked') ]
 			}, {
@@ -2190,7 +2133,7 @@
 			}).render() : E([]);
 
 			if (this.handleSaveApply || this.handleSave || this.handleReset) {
-				footer.appendChild(E('div', { 'class': 'cbi-page-actions control-group' }, [
+				footer.appendChild(E('div', { 'class': 'cbi-page-actions' }, [
 					saveApplyBtn, ' ',
 					this.handleSave ? E('button', {
 						'class': 'cbi-button cbi-button-save',
@@ -2210,15 +2153,14 @@
 	});
 
 
-	var dummyElem = null,
-	    domParser = null,
-	    originalCBIInit = null,
-	    rpcBaseURL = null,
-	    sysFeatures = null,
-	    preloadClasses = null;
+	const domParser = new DOMParser();
+	let originalCBIInit = null;
+	let rpcBaseURL = null;
+	let sysFeatures = null;
+	let preloadClasses = null;
 
 	/* "preload" builtin classes to make the available via require */
-	var classes = {
+	const classes = {
 		baseclass: Class,
 		dom: DOM,
 		poll: Poll,
@@ -2227,13 +2169,15 @@
 		view: View
 	};
 
-	var LuCI = Class.extend(/** @lends LuCI.prototype */ {
-		__name__: 'LuCI',
-		__init__: function(setenv) {
+	const naturalCompare = new Intl.Collator(undefined, { numeric: true }).compare;
 
-			document.querySelectorAll('script[src*="/luci.js"]').forEach(function(s) {
+	const LuCI = Class.extend(/** @lends LuCI.prototype */ {
+		__name__: 'LuCI',
+		__init__(setenv) {
+
+			document.querySelectorAll('script[src*="/luci.js"]').forEach(s => {
 				if (setenv.base_url == null || setenv.base_url == '') {
-					var m = (s.getAttribute('src') || '').match(/^(.*)\/luci\.js(?:\?v=([^?]+))?$/);
+					const m = (s.getAttribute('src') ?? '').match(/^(.*)\/luci\.js(?:\?v=([^?]+))?$/);
 					if (m) {
 						setenv.base_url = m[1];
 						setenv.resource_version = m[2];
@@ -2248,7 +2192,7 @@
 
 			Object.assign(env, setenv);
 
-			var domReady = new Promise(function(resolveFn, rejectFn) {
+			const domReady = new Promise((resolveFn, rejectFn) => {
 				document.addEventListener('DOMContentLoaded', resolveFn);
 			});
 
@@ -2261,7 +2205,7 @@
 			]).then(this.setupDOM.bind(this)).catch(this.error);
 
 			originalCBIInit = window.cbi_init;
-			window.cbi_init = function() {};
+			window.cbi_init = () => {};
 		},
 
 		/**
@@ -2288,29 +2232,29 @@
 		 * appended to the message and the type set to the given type
 		 * argument or copied from the given error instance.
 		 */
-		raise: function(type, fmt /*, ...*/) {
-			var e = null,
-			    msg = fmt ? String.prototype.format.apply(fmt, this.varargs(arguments, 2)) : null,
-			    stack = null;
+		raise(type, fmt, ...args) {
+			let e = null;
+			const msg = fmt ? String.prototype.format.call(fmt, ...args) : null;
+			const stack = [];
 
 			if (type instanceof Error) {
 				e = type;
 
 				if (msg)
-					e.message = msg + ': ' + e.message;
+					e.message = `${msg}: ${e.message}`;
 			}
 			else {
 				try { throw new Error('stacktrace') }
-				catch (e2) { stack = (e2.stack || '').split(/\n/) }
+				catch (e2) { stack.push(...(e2.stack ?? '').split(/\n/)) }
 
-				e = new (window[type || 'Error'] || Error)(msg || 'Unspecified error');
-				e.name = type || 'Error';
+				e = new (window[type ?? 'Error'] ?? Error)(msg ?? 'Unspecified error');
+				e.name = type ?? 'Error';
 			}
 
-			stack = (stack || []).map(function(frame) {
-				frame = frame.replace(/(.*?)@(.+):(\d+):(\d+)/g, 'at $1 ($2:$3:$4)').trim();
-				return frame ? '  ' + frame : '';
-			});
+			for (let i = 0; i < stack.length; i++) {
+				const frame = stack[i].replace(/(.*?)@(.+):(\d+):(\d+)/g, 'at $1 ($2:$3:$4)').trim();
+				stack[i] = frame ? `  ${frame}` : '';
+			}
 
 			if (!/^  at /.test(stack[0]))
 				stack.shift();
@@ -2322,7 +2266,7 @@
 				stack.shift();
 
 			if (stack.length)
-				e.message += '\n' + stack.join('\n');
+				e.message += `\n${stack.join('\n')}`;
 
 			if (window.console && console.debug)
 				console.debug(e);
@@ -2332,7 +2276,7 @@
 
 		/**
 		 * A wrapper around {@link LuCI#raise raise()} which also renders
-		 * the error either as modal overlay when `ui.js` is already loaed
+		 * the error either as modal overlay when `ui.js` is already loaded
 		 * or directly into the view body.
 		 *
 		 * @instance
@@ -2354,7 +2298,7 @@
 		 * appended to the message and the type set to the given type
 		 * argument or copied from the given error instance.
 		 */
-		error: function(type, fmt /*, ...*/) {
+		error(type, fmt /*, ...*/) {
 			try {
 				LuCI.prototype.raise.apply(LuCI.prototype,
 					Array.prototype.slice.call(arguments));
@@ -2395,8 +2339,8 @@
 		 * @returns {function}
 		 * Returns the bound function.
 		 */
-		bind: function(fn, self /*, ... */) {
-			return Function.prototype.bind.apply(fn, this.varargs(arguments, 2, self));
+		bind(fn, self, ...args) {
+			return Function.prototype.bind.call(fn, self, ...args);
 		},
 
 		/**
@@ -2434,8 +2378,9 @@
 		 * @returns {Promise<LuCI.baseclass>}
 		 * Returns the instantiated class.
 		 */
-		require: function(name, from) {
-			var L = this, url = null, from = from || [];
+		require(name, from = []) {
+			const L = this;
+			let url = null;
 
 			/* Class already loaded */
 			if (classes[name] != null) {
@@ -2448,23 +2393,23 @@
 				return Promise.resolve(classes[name]);
 			}
 
-			url = '%s/%s.js%s'.format(env.base_url, name.replace(/\./g, '/'), (env.resource_version ? '?v=' + env.resource_version : ''));
+			url = '%s/%s.js%s'.format(env.base_url, name.replace(/\./g, '/'), (env.resource_version ? `?v=${env.resource_version}` : ''));
 			from = [ name ].concat(from);
 
-			var compileClass = function(res) {
+			const compileClass = res => {
 				if (!res.ok)
 					LuCI.prototype.raise('NetworkError',
 						'HTTP error %d while loading class file "%s"', res.status, url);
 
-				var source = res.text(),
-				    requirematch = /^require[ \t]+(\S+)(?:[ \t]+as[ \t]+([a-zA-Z_]\S*))?$/,
-				    strictmatch = /^use[ \t]+strict$/,
-				    depends = [],
-				    args = '';
+				const source = res.text();
+				const requirematch = /^require[ \t]+(\S+)(?:[ \t]+as[ \t]+([a-zA-Z_]\S*))?$/;
+				const strictmatch = /^use[ \t]+strict$/;
+				const depends = [];
+				let args = '';
 
 				/* find require statements in source */
-				for (var i = 0, off = -1, prev = -1, quote = -1, comment = -1, esc = false; i < source.length; i++) {
-					var chr = source.charCodeAt(i);
+				for (let i = 0, off = -1, prev = -1, quote = -1, comment = -1, esc = false; i < source.length; i++) {
+					const chr = source.charCodeAt(i);
 
 					if (esc) {
 						esc = false;
@@ -2480,13 +2425,12 @@
 						esc = true;
 					}
 					else if (chr == quote) {
-						var s = source.substring(off, i),
-						    m = requirematch.exec(s);
+						const s = source.substring(off, i), m = requirematch.exec(s);
 
 						if (m) {
-							var dep = m[1], as = m[2] || dep.replace(/[^a-zA-Z0-9_]/g, '_');
+							const dep = m[1], as = m[2] || dep.replace(/[^a-zA-Z0-9_]/g, '_');
 							depends.push(LuCI.prototype.require(dep, from));
-							args += ', ' + as;
+							args += `, ${as}`;
 						}
 						else if (!strictmatch.exec(s)) {
 							break;
@@ -2504,8 +2448,8 @@
 				}
 
 				/* load dependencies and instantiate class */
-				return Promise.all(depends).then(function(instances) {
-					var _factory, _class;
+				return Promise.all(depends).then(instances => {
+					let _factory, _class;
 
 					try {
 						_factory = eval(
@@ -2514,27 +2458,28 @@
 					}
 					catch (error) {
 						LuCI.prototype.raise('SyntaxError', '%s\n  in %s:%s',
-							error.message, res.url, error.lineNumber || '?');
+							error.message, res.url, error.lineNumber ?? '?');
 					}
 
-					_factory.displayName = toCamelCase(name + 'ClassFactory');
+					_factory.displayName = toCamelCase(`${name}ClassFactory`);
 					_class = _factory.apply(_factory, [window, document, L].concat(instances));
 
 					if (!Class.isSubclass(_class))
-					    LuCI.prototype.error('TypeError', '"%s" factory yields invalid constructor', name);
+						LuCI.prototype.error('TypeError', '"%s" factory yields invalid constructor', name);
 
 					if (_class.displayName == 'AnonymousClass')
-						_class.displayName = toCamelCase(name + 'Class');
+						_class.displayName = toCamelCase(`${name}Class`);
 
-					var ptr = Object.getPrototypeOf(L),
-					    parts = name.split(/\./),
-					    instance = new _class();
+					let ptr = Object.getPrototypeOf(L);
+					let idx = 0;
+					const parts = name.split(/\./);
+					const instance = new _class();
 
-					for (var i = 0; ptr && i < parts.length - 1; i++)
-						ptr = ptr[parts[i]];
+					while (ptr && idx < parts.length - 1)
+						ptr = ptr[parts[idx++]];
 
 					if (ptr)
-						ptr[parts[i]] = instance;
+						ptr[parts[idx]] = instance;
 
 					classes[name] = instance;
 
@@ -2549,24 +2494,20 @@
 		},
 
 		/* DOM setup */
-		probeRPCBaseURL: function() {
+		probeRPCBaseURL() {
 			if (rpcBaseURL == null)
 				rpcBaseURL = Session.getLocalData('rpcBaseURL');
 
 			if (rpcBaseURL == null) {
-				var msg = {
+				const msg = {
 					jsonrpc: '2.0',
-					id:      'init',
+					id:	  'init',
 					method:  'list',
 					params:  undefined
 				};
-				var rpcFallbackURL = this.url('admin/ubus');
+				const rpcFallbackURL = this.url('admin/ubus');
 
-				rpcBaseURL = Request.post(env.ubuspath, msg, { nobatch: true }).then(function(res) {
-					return (rpcBaseURL = res.status == 200 ? env.ubuspath : rpcFallbackURL);
-				}, function() {
-					return (rpcBaseURL = rpcFallbackURL);
-				}).then(function(url) {
+				rpcBaseURL = Request.post(env.ubuspath, msg, { nobatch: true }).then(res => rpcBaseURL = res.status == 200 ? env.ubuspath : rpcFallbackURL, () => rpcBaseURL = rpcFallbackURL).then(url => {
 					Session.setLocalData('rpcBaseURL', url);
 					return url;
 				});
@@ -2575,7 +2516,7 @@
 			return Promise.resolve(rpcBaseURL);
 		},
 
-		probeSystemFeatures: function() {
+		probeSystemFeatures() {
 			if (sysFeatures == null)
 				sysFeatures = Session.getLocalData('features');
 
@@ -2584,7 +2525,7 @@
 					object: 'luci',
 					method: 'getFeatures',
 					expect: { '': {} }
-				})().then(function(features) {
+				})().then(features => {
 					Session.setLocalData('features', features);
 					sysFeatures = features;
 
@@ -2595,7 +2536,7 @@
 			return Promise.resolve(sysFeatures);
 		},
 
-		probePreloadClasses: function() {
+		probePreloadClasses() {
 			if (preloadClasses == null)
 				preloadClasses = Session.getLocalData('preload');
 
@@ -2605,14 +2546,14 @@
 					method: 'list',
 					params: [ 'path' ],
 					expect: { 'entries': [] }
-				})(this.fspath(this.resource('preload'))), []).then(function(entries) {
-					var classes = [];
+				})(this.fspath(this.resource('preload'))), []).then(entries => {
+					const classes = [];
 
-					for (var i = 0; i < entries.length; i++) {
+					for (let i = 0; i < entries.length; i++) {
 						if (entries[i].type != 'file')
 							continue;
 
-						var m = entries[i].name.match(/(.+)\.js$/);
+						const m = entries[i].name.match(/(.+)\.js$/);
 
 						if (m)
 							classes.push('preload.%s'.format(m[1]));
@@ -2640,7 +2581,7 @@
 		 *
 		 * @param {string} feature
 		 * The feature to test. For detailed list of known feature flags,
-		 * see `/modules/luci-base/root/usr/libexec/rpcd/luci`.
+		 * see `/modules/luci-base/root/usr/share/rpcd/ucode/luci`.
 		 *
 		 * @param {string} [subfeature]
 		 * Some feature classes like `hostapd` provide sub-feature flags,
@@ -2653,8 +2594,8 @@
 		 * Return `null` when a sub-feature was queried for a feature which
 		 * has no sub-features.
 		 */
-		hasSystemFeature: function() {
-			var ft = sysFeatures[arguments[0]];
+		hasSystemFeature() {
+			const ft = sysFeatures[arguments[0]];
 
 			if (arguments.length == 2)
 				return this.isObject(ft) ? ft[arguments[1]] : null;
@@ -2663,7 +2604,7 @@
 		},
 
 		/* private */
-		notifySessionExpiry: function() {
+		notifySessionExpiry() {
 			Poll.stop();
 
 			classes.ui.showModal(_('Session expired'), [
@@ -2672,34 +2613,30 @@
 				E('div', { class: 'right' },
 					E('div', {
 						class: 'btn primary',
-						click: function() {
-							var loc = window.location;
-							window.location = loc.protocol + '//' + loc.host + loc.pathname + loc.search;
+						click() {
+							const loc = window.location;
+							window.location = `${loc.protocol}//${loc.host}${loc.pathname}${loc.search}`;
 						}
-					}, _('To login…')))
+					}, _('Log in…')))
 			]);
 
 			LuCI.prototype.raise('SessionError', 'Login session is expired');
 		},
 
 		/* private */
-		setupDOM: function(res) {
-			var domEv = res[0],
-			    uiClass = res[1],
-			    rpcClass = res[2],
-			    formClass = res[3],
-			    rpcBaseURL = res[4];
+		setupDOM(res) {
+			const domEv = res[0], uiClass = res[1], rpcClass = res[2], formClass = res[3], rpcBaseURL = res[4];
 
 			rpcClass.setBaseURL(rpcBaseURL);
 
-			rpcClass.addInterceptor(function(msg, req) {
+			rpcClass.addInterceptor((msg, req) => {
 				if (!LuCI.prototype.isObject(msg) ||
-				    !LuCI.prototype.isObject(msg.error) ||
-				    msg.error.code != -32002)
+					!LuCI.prototype.isObject(msg.error) ||
+					msg.error.code != -32002)
 					return;
 
 				if (!LuCI.prototype.isObject(req) ||
-				    (req.object == 'session' && req.method == 'access'))
+					(req.object == 'session' && req.method == 'access'))
 					return;
 
 				return rpcClass.declare({
@@ -2710,8 +2647,8 @@
 				})('uci', 'luci', 'read').catch(LuCI.prototype.notifySessionExpiry);
 			});
 
-			Request.addInterceptor(function(res) {
-				var isDenied = false;
+			Request.addInterceptor(res => {
+				let isDenied = false;
 
 				if (res.status == 403 && res.headers.get('X-LuCI-Login-Required') == 'yes')
 					isDenied = true;
@@ -2722,13 +2659,13 @@
 				LuCI.prototype.notifySessionExpiry();
 			});
 
-			document.addEventListener('poll-start', function(ev) {
-				uiClass.showIndicator('poll-status', _('Refreshing'), function(ev) {
+			document.addEventListener('poll-start', ev => {
+				uiClass.showIndicator('poll-status', _('Refreshing'), ev => {
 					Request.poll.active() ? Request.poll.stop() : Request.poll.start();
 				});
 			});
 
-			document.addEventListener('poll-stop', function(ev) {
+			document.addEventListener('poll-stop', ev => {
 				uiClass.showIndicator('poll-status', _('Paused'), null, 'inactive');
 			});
 
@@ -2736,10 +2673,10 @@
 				this.probeSystemFeatures(),
 				this.probePreloadClasses()
 			]).finally(LuCI.prototype.bind(function() {
-				var tasks = [];
+				const tasks = [];
 
 				if (Array.isArray(preloadClasses))
-					for (var i = 0; i < preloadClasses.length; i++)
+					for (let i = 0; i < preloadClasses.length; i++)
 						tasks.push(this.require(preloadClasses[i]));
 
 				return Promise.all(tasks);
@@ -2747,7 +2684,7 @@
 		},
 
 		/* private */
-		initDOM: function() {
+		initDOM() {
 			originalCBIInit();
 			Poll.start();
 			document.dispatchEvent(new CustomEvent('luci-loaded'));
@@ -2760,7 +2697,7 @@
 		 * @instance
 		 * @memberof LuCI
 		 */
-		env: env,
+		env,
 
 		/**
 		 * Construct an absolute filesystem path relative to the server
@@ -2775,16 +2712,15 @@
 		 * @return {string}
 		 * Return the joined path.
 		 */
-		fspath: function(/* ... */) {
-			var path = env.documentroot;
+		fspath() /* ... */{
+			let path = env.documentroot;
 
-			for (var i = 0; i < arguments.length; i++)
-				path += '/' + arguments[i];
+			for (let i = 0; i < arguments.length; i++)
+				path += `/${arguments[i]}`;
 
-			var p = path.replace(/\/+$/, '').replace(/\/+/g, '/').split(/\//),
-			    res = [];
+			const p = path.replace(/\/+$/, '').replace(/\/+/g, '/').split(/\//), res = [];
 
-			for (var i = 0; i < p.length; i++)
+			for (let i = 0; i < p.length; i++)
 				if (p[i] == '..')
 					res.pop();
 				else if (p[i] != '.')
@@ -2795,9 +2731,11 @@
 
 		/**
 		 * Construct a relative URL path from the given prefix and parts.
-		 * The resulting URL is guaranteed to only contain the characters
+		 * The resulting URL is guaranteed to contain only the characters
 		 * `a-z`, `A-Z`, `0-9`, `_`, `.`, `%`, `,`, `;`, and `-` as well
-		 * as `/` for the path separator.
+		 * as `/` for the path separator. Suffixing '?x=y&foo=bar' URI
+		 * parameters also limited to the aforementioned characters is
+		 * permissible.
 		 *
 		 * @instance
 		 * @memberof LuCI
@@ -2806,19 +2744,24 @@
 		 * The prefix to join the given parts with. If the `prefix` is
 		 * omitted, it defaults to an empty string.
 		 *
-		 * @param {string[]} [parts]
-		 * An array of parts to join into an URL path. Parts may contain
+		 * @param {...string} [parts]
+		 * An array of parts to join into a URL path. Parts may contain
 		 * slashes and any of the other characters mentioned above.
 		 *
 		 * @return {string}
 		 * Return the joined URL path.
 		 */
-		path: function(prefix, parts) {
-			var url = [ prefix || '' ];
+		path(prefix = '', parts) {
+			const url = [ prefix ];
 
-			for (var i = 0; i < parts.length; i++)
-				if (/^(?:[a-zA-Z0-9_.%,;-]+\/)*[a-zA-Z0-9_.%,;-]+$/.test(parts[i]))
-					url.push('/', parts[i]);
+			for (let i = 0; i < parts.length; i++){				
+				const part = parts[i];
+				if (Array.isArray(part))
+					url.push(this.path('', part));
+				else
+					if (/^(?:[a-zA-Z0-9_.%,;-]+\/)*[a-zA-Z0-9_.%,;-]+$/.test(part) || /^\?[a-zA-Z0-9_.%=&;-]+$/.test(part))
+						url.push(part.startsWith('?') ? part : '/' + part);
+			}
 
 			if (url.length === 1)
 				url.push('/');
@@ -2827,68 +2770,74 @@
 		},
 
 		/**
-		 * Construct an URL  pathrelative to the script path of the server
+		 * Construct a URL with path relative to the script path of the server
 		 * side LuCI application (usually `/cgi-bin/luci`).
 		 *
-		 * The resulting URL is guaranteed to only contain the characters
+		 * The resulting URL is guaranteed to contain only the characters
 		 * `a-z`, `A-Z`, `0-9`, `_`, `.`, `%`, `,`, `;`, and `-` as well
-		 * as `/` for the path separator.
+		 * as `/` for the path separator. Suffixing '?x=y&foo=bar' URI
+		 * parameters also limited to the aforementioned characters is
+		 * permissible.
 		 *
 		 * @instance
 		 * @memberof LuCI
 		 *
-		 * @param {string[]} [parts]
-		 * An array of parts to join into an URL path. Parts may contain
+		 * @param {...string} [parts]
+		 * An array of parts to join into a URL path. Parts may contain
 		 * slashes and any of the other characters mentioned above.
 		 *
 		 * @return {string}
 		 * Returns the resulting URL path.
 		 */
-		url: function() {
+		url() {
 			return this.path(env.scriptname, arguments);
 		},
 
 		/**
-		 * Construct an URL path relative to the global static resource path
+		 * Construct a URL path relative to the global static resource path
 		 * of the LuCI ui (usually `/luci-static/resources`).
 		 *
-		 * The resulting URL is guaranteed to only contain the characters
+		 * The resulting URL is guaranteed to contain only the characters
 		 * `a-z`, `A-Z`, `0-9`, `_`, `.`, `%`, `,`, `;`, and `-` as well
-		 * as `/` for the path separator.
+		 * as `/` for the path separator. Suffixing '?x=y&foo=bar' URI
+		 * parameters also limited to the aforementioned characters is
+		 * permissible.
 		 *
 		 * @instance
 		 * @memberof LuCI
 		 *
-		 * @param {string[]} [parts]
-		 * An array of parts to join into an URL path. Parts may contain
+		 * @param {...string} [parts]
+		 * An array of parts to join into a URL path. Parts may contain
 		 * slashes and any of the other characters mentioned above.
 		 *
 		 * @return {string}
 		 * Returns the resulting URL path.
 		 */
-		resource: function() {
+		resource() {
 			return this.path(env.resource, arguments);
 		},
 
 		/**
-		 * Construct an URL path relative to the media resource path of the
+		 * Construct a URL path relative to the media resource path of the
 		 * LuCI ui (usually `/luci-static/$theme_name`).
 		 *
-		 * The resulting URL is guaranteed to only contain the characters
+		 * The resulting URL is guaranteed to contain only the characters
 		 * `a-z`, `A-Z`, `0-9`, `_`, `.`, `%`, `,`, `;`, and `-` as well
-		 * as `/` for the path separator.
+		 * as `/` for the path separator. Suffixing '?x=y&foo=bar' URI
+		 * parameters also limited to the aforementioned characters is
+		 * permissible.
 		 *
 		 * @instance
 		 * @memberof LuCI
 		 *
-		 * @param {string[]} [parts]
-		 * An array of parts to join into an URL path. Parts may contain
+		 * @param {...string} [parts]
+		 * An array of parts to join into a URL path. Parts may contain
 		 * slashes and any of the other characters mentioned above.
 		 *
 		 * @return {string}
 		 * Returns the resulting URL path.
 		 */
-		media: function() {
+		media() {
 			return this.path(env.media, arguments);
 		},
 
@@ -2901,7 +2850,7 @@
 		 * @return {string}
 		 * Returns the URL path to the current view.
 		 */
-		location: function() {
+		location() {
 			return this.path(env.scriptname, env.requestpath);
 		},
 
@@ -2921,8 +2870,25 @@
 		 * Returns `true` if the given value is of type object and
 		 * not `null`, else returns `false`.
 		 */
-		isObject: function(val) {
+		isObject(val) {
 			return (val != null && typeof(val) == 'object');
+		},
+
+		/**
+		 * Tests whether the passed argument is a function arguments object.
+		 *
+		 * @instance
+		 * @memberof LuCI
+		 *
+		 * @param {*} [val]
+		 * The value to test
+		 *
+		 * @return {boolean}
+		 * Returns `true` if the given value is a function arguments object,
+		 * else returns `false`.
+		 */
+		isArguments(val) {
+			return (Object.prototype.toString.call(val) == '[object Arguments]');
 		},
 
 		/**
@@ -2936,31 +2902,31 @@
 		 * The object to extract the keys from. If the given value is
 		 * not an object, the function will return an empty array.
 		 *
-		 * @param {string} [key]
+		 * @param {string|null} [key]
 		 * Specifies the key to order by. This is mainly useful for
 		 * nested objects of objects or objects of arrays when sorting
 		 * shall not be performed by the primary object keys but by
 		 * some other key pointing to a value within the nested values.
 		 *
-		 * @param {string} [sortmode]
-		 * May be either `addr` or `num` to override the natural
+		 * @param {"addr"|"num"} [sortmode]
+		 * Can be either `addr` or `num` to override the natural
 		 * lexicographic sorting with a sorting suitable for IP/MAC style
 		 * addresses or numeric values respectively.
 		 *
 		 * @return {string[]}
 		 * Returns an array containing the sorted keys of the given object.
 		 */
-		sortedKeys: function(obj, key, sortmode) {
+		sortedKeys(obj, key, sortmode) {
 			if (obj == null || typeof(obj) != 'object')
 				return [];
 
-			return Object.keys(obj).map(function(e) {
-				var v = (key != null) ? obj[e][key] : e;
+			return Object.keys(obj).map(e => {
+				let v = (key != null) ? obj[e][key] : e;
 
 				switch (sortmode) {
 				case 'addr':
 					v = (v != null) ? v.replace(/(?:^|[.:])([0-9a-fA-F]{1,4})/g,
-						function(m0, m1) { return ('000' + m1.toLowerCase()).substr(-4) }) : null;
+						(m0, m1) => (`000${m1.toLowerCase()}`).substr(-4)) : null;
 					break;
 
 				case 'num':
@@ -2969,18 +2935,49 @@
 				}
 
 				return [ e, v ];
-			}).filter(function(e) {
-				return (e[1] != null);
-			}).sort(function(a, b) {
-				if (a[1] < b[1])
-					return -1;
-				else if (a[1] > b[1])
-					return 1;
-				else
-					return 0;
-			}).map(function(e) {
-				return e[0];
-			});
+			}).filter(e => e[1] != null).sort((a, b) => naturalCompare(a[1], b[1])).map(e => e[0]);
+		},
+
+		/**
+		 * Compares two values numerically and returns -1, 0 or 1 depending
+		 * on whether the first value is smaller, equal to or larger than the
+		 * second one respectively.
+		 *
+		 * This function is meant to be used as comparator function for
+		 * Array.sort().
+		 *
+		 * @type {function}
+		 *
+		 * @param {*} a
+		 * The first value
+		 *
+		 * @param {*} b
+		 * The second value.
+		 *
+		 * @return {number}
+		 * Returns -1 if the first value is smaller than the second one.
+		 * Returns 0 if both values are equal.
+		 * Returns 1 if the first value is larger than the second one.
+		 */
+		naturalCompare,
+
+		/**
+		 * Converts the given value to an array using toArray() if needed,
+		 * performs a numerical sort using naturalCompare() and returns the
+		 * result. If the input already is an array, no copy is being made
+		 * and the sorting is performed in-place.
+		 *
+		 * @see toArray
+		 * @see naturalCompare
+		 *
+		 * @param {*} val
+		 * The input value to sort (and convert to an array if needed).
+		 *
+		 * @return {Array<*>}
+		 * Returns the resulting, numerically sorted array.
+		 */
+		sortedArray(val) {
+			return this.toArray(val).sort(naturalCompare);
 		},
 
 		/**
@@ -3000,7 +2997,7 @@
 		 * @return {Array<*>}
 		 * Returns the resulting array.
 		 */
-		toArray: function(val) {
+		toArray(val) {
 			if (val == null)
 				return [];
 			else if (Array.isArray(val))
@@ -3008,7 +3005,7 @@
 			else if (typeof(val) == 'object')
 				return [ val ];
 
-			var s = String(val).trim();
+			const s = String(val).trim();
 
 			if (s == '')
 				return [];
@@ -3017,7 +3014,7 @@
 		},
 
 		/**
-		 * Returns a promise resolving with either the given value or or with
+		 * Returns a promise resolving with either the given value or with
 		 * the given default in case the input value is a rejecting promise.
 		 *
 		 * @instance
@@ -3034,8 +3031,8 @@
 		 * Returns a new promise resolving either to the given input value or
 		 * to the given default value on error.
 		 */
-		resolveDefault: function(value, defvalue) {
-			return Promise.resolve(value).catch(function() { return defvalue });
+		resolveDefault(value, defvalue) {
+			return Promise.resolve(value).catch(() => defvalue);
 		},
 
 		/**
@@ -3079,7 +3076,7 @@
 		 * @return {Promise<null>}
 		 * Returns a promise resolving to `null` when concluded.
 		 */
-		get: function(url, args, cb) {
+		get(url, args, cb) {
 			return this.poll(null, url, args, cb, false);
 		},
 
@@ -3107,7 +3104,7 @@
 		 * @return {Promise<null>}
 		 * Returns a promise resolving to `null` when concluded.
 		 */
-		post: function(url, args, cb) {
+		post(url, args, cb) {
 			return this.poll(null, url, args, cb, true);
 		},
 
@@ -3149,25 +3146,22 @@
 		 * be passed to {@link LuCI.poll.remove Poll.remove()} to remove the
 		 * polling request.
 		 */
-		poll: function(interval, url, args, cb, post) {
+		poll(interval, url, args, cb, post) {
 			if (interval !== null && interval <= 0)
 				interval = env.pollinterval;
 
-			var data = post ? { token: env.token } : null,
-			    method = post ? 'POST' : 'GET';
+			const data = Object.assign(post ? { token: env.token } : {}, args);
+			const method = post ? 'POST' : 'GET';
 
 			if (!/^(?:\/|\S+:\/\/)/.test(url))
 				url = this.url(url);
 
-			if (args != null)
-				data = Object.assign(data || {}, args);
-
 			if (interval !== null)
-				return Request.poll.add(interval, url, { method: method, query: data }, cb);
+				return Request.poll.add(interval, url, { method, query: data }, cb);
 			else
-				return Request.request(url, { method: method, query: data })
-					.then(function(res) {
-						var json = null;
+				return Request.request(url, { method, query: data })
+					.then(res => {
+						let json = null;
 						if (/^application\/json\b/.test(res.headers.get('Content-Type')))
 							try { json = res.json() } catch(e) {}
 						cb(res.xhr, json, res.duration);
@@ -3183,9 +3177,9 @@
 		 * permissions are granted or `true` if at least one required ACL
 		 * group is granted with write permissions.
 		 */
-		hasViewPermission: function() {
+		hasViewPermission() {
 			if (!this.isObject(env.nodespec) || !env.nodespec.satisfied)
-			    return null;
+				return null;
 
 			return !env.nodespec.readonly;
 		},
@@ -3204,7 +3198,7 @@
 		 * Returns `true` when the function has been removed or `false` if
 		 * it could not be found.
 		 */
-		stop: function(entry) { return Poll.remove(entry) },
+		stop(entry) { return Poll.remove(entry) },
 
 		/**
 		 * Deprecated wrapper around {@link LuCI.poll.stop Poll.stop()}.
@@ -3217,7 +3211,7 @@
 		 * Returns `true` when the polling loop has been stopped or `false`
 		 * when it didn't run to begin with.
 		 */
-		halt: function() { return Poll.stop() },
+		halt() { return Poll.stop() },
 
 		/**
 		 * Deprecated wrapper around {@link LuCI.poll.start Poll.start()}.
@@ -3230,7 +3224,7 @@
 		 * Returns `true` when the polling loop has been started or `false`
 		 * when it was already running.
 		 */
-		run: function() { return Poll.start() },
+		run() { return Poll.start() },
 
 		/**
 		 * Legacy `L.dom` class alias. New view code should use `'require dom';`
@@ -3260,7 +3254,7 @@
 		 * @memberof LuCI
 		 * @deprecated
 		 */
-		Poll: Poll,
+		Poll,
 
 		/**
 		 * Legacy `L.Request` class alias. New view code should use `'require request';`
@@ -3270,7 +3264,7 @@
 		 * @memberof LuCI
 		 * @deprecated
 		 */
-		Request: Request,
+		Request,
 
 		/**
 		 * Legacy `L.Class` class alias. New view code should use `'require baseclass';`
@@ -3280,7 +3274,7 @@
 		 * @memberof LuCI
 		 * @deprecated
 		 */
-		Class: Class
+		Class
 	});
 
 	/**
@@ -3296,14 +3290,14 @@
 	 * New code should use {@link LuCI.request} instead to implement HTTP
 	 * request handling.
 	 */
-	var XHR = Class.extend(/** @lends LuCI.xhr.prototype */ {
+	const XHR = Class.extend(/** @lends LuCI.xhr.prototype */ {
 		__name__: 'LuCI.xhr',
-		__init__: function() {
+		__init__() {
 			if (window.console && console.debug)
 				console.debug('Direct use XHR() is deprecated, please use L.Request instead');
 		},
 
-		_response: function(cb, res, json, duration) {
+		_response(cb, res, json, duration) {
 			if (this.active)
 				cb(res, json, duration);
 			delete this.active;
@@ -3331,7 +3325,7 @@
 		 *
 		 * @return {Promise<null>}
 		 */
-		get: function(url, data, callback, timeout) {
+		get(url, data, callback, timeout) {
 			this.active = true;
 			LuCI.prototype.get(url, data, this._response.bind(this, callback), timeout);
 		},
@@ -3358,7 +3352,7 @@
 		 *
 		 * @return {Promise<null>}
 		 */
-		post: function(url, data, callback, timeout) {
+		post(url, data, callback, timeout) {
 			this.active = true;
 			LuCI.prototype.post(url, data, this._response.bind(this, callback), timeout);
 		},
@@ -3375,7 +3369,7 @@
 		 * @deprecated
 		 * @memberof LuCI.xhr
 		 */
-		cancel: function() { delete this.active },
+		cancel() { delete this.active },
 
 		/**
 		 * Checks the running state of the request.
@@ -3388,7 +3382,7 @@
 		 * Returns `true` if the request is still running or `false` if it
 		 * already completed.
 		 */
-		busy: function() { return (this.active === true) },
+		busy() { return (this.active === true) },
 
 		/**
 		 * Ignored for backwards compatibility.
@@ -3399,7 +3393,7 @@
 		 * @deprecated
 		 * @memberof LuCI.xhr
 		 */
-		abort: function() {},
+		abort() {},
 
 		/**
 		 * Existing for backwards compatibility.
@@ -3414,12 +3408,12 @@
 		 * Throws an `InternalError` with the message `Not implemented`
 		 * when invoked.
 		 */
-		send_form: function() { LuCI.prototype.error('InternalError', 'Not implemented') },
+		send_form() { LuCI.prototype.error('InternalError', 'Not implemented') },
 	});
 
-	XHR.get = function() { return LuCI.prototype.get.apply(LuCI.prototype, arguments) };
-	XHR.post = function() { return LuCI.prototype.post.apply(LuCI.prototype, arguments) };
-	XHR.poll = function() { return LuCI.prototype.poll.apply(LuCI.prototype, arguments) };
+	XHR.get = (...args) => LuCI.prototype.get.call(LuCI.prototype, ...args);
+	XHR.post = (...args) => LuCI.prototype.post.call(LuCI.prototype, ...args);
+	XHR.poll = (...args) => LuCI.prototype.poll.call(LuCI.prototype, ...args);
 	XHR.stop = Request.poll.remove.bind(Request.poll);
 	XHR.halt = Request.poll.stop.bind(Request.poll);
 	XHR.run = Request.poll.start.bind(Request.poll);

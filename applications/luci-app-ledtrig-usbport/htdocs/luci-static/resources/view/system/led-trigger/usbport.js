@@ -4,7 +4,7 @@
 'require uci';
 'require form';
 
-var callUSB = rpc.declare({
+const callUSB = rpc.declare({
 	object: 'luci',
 	method: 'getUSBDevices',
 	expect: { 'ports': [] }
@@ -12,6 +12,7 @@ var callUSB = rpc.declare({
 
 return baseclass.extend({
 	trigger: _('USB (kernel: usbport)'),
+	description: _('This LED trigger can be used for signalling to the user a presence of USB device in a given port.'),
 	kernel: true,
 	addFormOptions(s){
 		var o;

@@ -2,6 +2,7 @@
 'require rpc';
 'require form';
 'require network';
+'require validation';
 
 var callGetCertificateFiles = rpc.declare({
 	object: 'luci.openconnect',
@@ -37,8 +38,8 @@ function sanitizeCert(s) {
 }
 
 function validateCert(priv, section_id, value) {
-	var beg = priv ? /^-----BEGIN RSA PRIVATE KEY-----$/ : /^-----BEGIN CERTIFICATE-----$/,
-	    end = priv ? /^-----END RSA PRIVATE KEY-----$/ : /^-----END CERTIFICATE-----$/,
+	var beg = priv ? /^-----BEGIN (RSA )?PRIVATE KEY-----$/ : /^-----BEGIN CERTIFICATE-----$/,
+	    end = priv ? /^-----END (RSA )?PRIVATE KEY-----$/ : /^-----END CERTIFICATE-----$/,
 	    lines = value.trim().split(/[\r\n]/),
 	    start = false,
 	    i;
@@ -61,14 +62,14 @@ function validateCert(priv, section_id, value) {
 
 return network.registerProtocol('openconnect', {
 	getI18n: function() {
-		return _('OpenConnect (CISCO AnyConnect)');
+		return _('OpenConnect');
 	},
 
 	getIfname: function() {
 		return this._ubus('l3_device') || 'vpn-%s'.format(this.sid);
 	},
 
-	getOpkgPackage: function() {
+	getPackageName: function() {
 		return 'openconnect';
 	},
 
@@ -94,21 +95,54 @@ return network.registerProtocol('openconnect', {
 		    o;
 
 		o = s.taboption('general', form.ListValue, 'vpn_protocol', _('VPN Protocol'));
-		o.value('anyconnect', 'Cisco AnyConnect SSL VPN');
+		o.value('anyconnect', 'OpenConnect or Cisco AnyConnect SSL VPN');
 		o.value('nc', 'Juniper Network Connect');
-		o.value('gp', 'GlobalProtect SSL VPN');
+		o.value('gp', 'Palo Alto Networks GlobalProtect');
 		o.value('pulse', 'Pulse Connect Secure SSL VPN');
+		o.value('f5', 'F5 BIG-IP SSL VPN');
+		o.value('fortinet', 'Fortinet SSL VPN');
+		o.value('array', 'Array Networks SSL VPN');
 
-		o = s.taboption('general', form.Value, 'server', _('VPN Server'));
-		o.datatype = 'host(0)';
+		o = s.taboption('general', form.Value, 'uri', _('VPN Server'));
+		o.placeholder = 'https://example.com:443/usergroup';
+		o.validate = function(section_id, value) {
+			var m = String(value).match(/^(?:(\w+):\/\/|)(?:\[([0-9a-f:.]{2,45})\]|([^\/:]+))(?::([0-9]{1,5}))?(?:\/.*)?$/i);
 
-		o = s.taboption('general', form.Value, 'port', _('VPN Server port'));
-		o.placeholder = '443';
-		o.datatype    = 'port';
+			if (!m)
+				return _('Invalid server URL');
+
+			if (m[1] != null) {
+				if (!m[1].match(/^(?:https|socks|socks4|socks5)$/i))
+					return _('Unsupported protocol');
+			}
+
+			if (m[2] != null) {
+				if (!validation.parseIPv6(m[2]))
+					return _('Invalid IPv6 address');
+			}
+
+			if (m[3] != null) {
+				if (!validation.parseIPv4(m[3])) {
+					if (!(m[3].length <= 253 &&
+					      (m[3].match(/^[a-zA-Z0-9_]+$/) != null ||
+					       (m[3].match(/^[a-zA-Z0-9_][a-zA-Z0-9_\-.]*[a-zA-Z0-9]$/) &&
+					        m[3].match(/[^0-9.]/)))))
+						return _('Invalid hostname or IPv4 address');
+				}
+			}
+
+			if (m[4] != null) {
+				var p = +m[4];
+
+				if (p < 0 || p > 65535)
+					return _('Invalid port');
+			}
+
+			return true;
+		};
 
 		s.taboption('general', form.Value, 'serverhash', _("VPN Server's certificate SHA1 hash"));
 		s.taboption('general', form.Value, 'authgroup', _('Auth Group'));
-		s.taboption('general', form.Value, 'usergroup', _('User Group'));
 		s.taboption("general", form.Value, "username", _("Username"));
 
 		o = s.taboption('general', form.Value, 'password', _('Password'));
@@ -116,6 +150,9 @@ return network.registerProtocol('openconnect', {
 
 		o = s.taboption('general', form.Value, 'password2', _('Password2'));
 		o.password = true;
+
+		o = s.taboption('general', form.Value, 'proxy', _('Proxy Server'));
+		o.optional = true;
 
 		o = s.taboption('general', form.TextValue, 'usercert', _('User certificate (PEM encoded)'));
 		o.rows = 10;
@@ -157,5 +194,10 @@ return network.registerProtocol('openconnect', {
 		o.optional = true;
 		o.placeholder = 1406;
 		o.datatype = 'range(68, 9200)';
+
+		o = s.taboption('advanced', form.Value, 'reconnect_timeout', _('Reconnect Timeout'));
+		o.optional = true;
+		o.placeholder = 300;
+		o.datatype = 'min(10)';
 	}
 });

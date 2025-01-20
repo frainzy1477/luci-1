@@ -19,7 +19,7 @@
 #define _GNU_SOURCE
 
 #include <stdio.h>
-#include <string.h>
+#include <libgen.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <stdarg.h>
@@ -76,9 +76,12 @@ struct invoke_context {
 	void *priv;
 };
 
-static const char **iw_modenames;
+typedef const char * const iw_text_t;
+static iw_text_t *iw_modenames, *iw_authnames, *iw_kmgmtnames,
+                 *iw_ciphernames, *iw_htmodenames, *iw_80211names;
 static struct iwinfo_ops *(*iw_backend)(const char *);
 static void (*iw_close)(void);
+static size_t (*iw_format_hwmodes)(int, char *, size_t);
 
 static void
 invoke_data_cb(struct ubus_request *req, int type, struct blob_attr *msg)
@@ -326,6 +329,15 @@ duid2ea(const char *duid)
 	return &ea;
 }
 
+static void strip_colon_duid(char *str) {
+	char *pr = str, *pw = str;
+
+	while (*pr) {
+		*pw = *pr++;
+		pw += (*pw != ':');
+	}
+	*pw = '\0';
+}
 
 static struct {
 	time_t now;
@@ -347,6 +359,7 @@ struct lease_entry {
 		struct in_addr in;
 		struct in6_addr in6;
 	} addr[10];
+	uint8_t mask;
 };
 
 static bool
@@ -480,10 +493,17 @@ lease_next(void)
 
 				p = strtok(NULL, " \t\n"); /* iaid */
 
-				if (p)
-					e.af = strcmp(p, "ipv4") ? AF_INET6 : AF_INET;
-				else
+				if (!p)
 					continue;
+
+				if (!strcmp(p, "ipv4")) {
+					e.af = AF_INET;
+					e.mask = 32;
+				}
+				else {
+					e.af = AF_INET6;
+					e.mask = 128;
+				}
 
 				e.hostname = strtok(NULL, " \t\n"); /* name */
 
@@ -505,7 +525,16 @@ lease_next(void)
 					e.expire = -1;
 
 				strtok(NULL, " \t\n"); /* id */
-				strtok(NULL, " \t\n"); /* length */
+
+				p = strtok(NULL, " \t\n"); /* length */
+
+				if (!p)
+					continue;
+
+				n = atoi(p); /* length */
+
+				if (n != 0)
+					e.mask = n;
 
 				for (e.n_addr = 0, p = strtok(NULL, "/ \t\n");
 				     e.n_addr < ARRAY_SIZE(e.addr) && p != NULL;
@@ -551,10 +580,12 @@ lease_next(void)
 
 				if (p && inet_pton(AF_INET6, p, &e.addr[0].in6)) {
 					e.af = AF_INET6;
+					e.mask = 128;
 					e.n_addr = 1;
 				}
 				else if (p && inet_pton(AF_INET, p, &e.addr[0].in)) {
 					e.af = AF_INET;
+					e.mask = 32;
 					e.n_addr = 1;
 				}
 				else {
@@ -569,6 +600,8 @@ lease_next(void)
 
 				if (!e.hostname || !e.duid)
 					continue;
+
+				strip_colon_duid(e.duid);
 
 				if (!strcmp(e.hostname, "*"))
 					e.hostname = NULL;
@@ -769,13 +802,13 @@ rpc_luci_parse_network_device_sys(const char *name, struct ifaddrs *ifaddr)
 	blobmsg_close_table(&blob, o2);
 
 	o2 = blobmsg_open_table(&blob, "flags");
-	blobmsg_add_u8(&blob, "up", ifa_flags & IFF_UP);
-	blobmsg_add_u8(&blob, "broadcast", ifa_flags & IFF_BROADCAST);
-	blobmsg_add_u8(&blob, "promisc", ifa_flags & IFF_PROMISC);
-	blobmsg_add_u8(&blob, "loopback", ifa_flags & IFF_LOOPBACK);
-	blobmsg_add_u8(&blob, "noarp", ifa_flags & IFF_NOARP);
-	blobmsg_add_u8(&blob, "multicast", ifa_flags & IFF_MULTICAST);
-	blobmsg_add_u8(&blob, "pointtopoint", ifa_flags & IFF_POINTOPOINT);
+	blobmsg_add_u8(&blob, "up", !!(ifa_flags & IFF_UP));
+	blobmsg_add_u8(&blob, "broadcast", !!(ifa_flags & IFF_BROADCAST));
+	blobmsg_add_u8(&blob, "promisc", !!(ifa_flags & IFF_PROMISC));
+	blobmsg_add_u8(&blob, "loopback", !!(ifa_flags & IFF_LOOPBACK));
+	blobmsg_add_u8(&blob, "noarp", !!(ifa_flags & IFF_NOARP));
+	blobmsg_add_u8(&blob, "multicast", !!(ifa_flags & IFF_MULTICAST));
+	blobmsg_add_u8(&blob, "pointtopoint", !!(ifa_flags & IFF_POINTOPOINT));
 	blobmsg_close_table(&blob, o2);
 
 	o2 = blobmsg_open_table(&blob, "link");
@@ -830,7 +863,7 @@ rpc_luci_get_network_devices(struct ubus_context *ctx,
 			if (e == NULL)
 				break;
 
-			if (strcmp(e->d_name, ".") && strcmp(e->d_name, ".."))
+			if (e->d_type != DT_DIR && e->d_type != DT_REG)
 				rpc_luci_parse_network_device_sys(e->d_name, ifaddr);
 		}
 
@@ -865,6 +898,48 @@ iw_call_num(int (*method)(const char *, int *), const char *dev,
 		blobmsg_add_u32(blob, field, val);
 }
 
+static void
+iw_lower(const char *src, char *dst, size_t len)
+{
+	size_t i;
+
+	for (i = 0; *src && i < len; i++)
+		*dst++ = tolower(*src++);
+
+	*dst = 0;
+}
+
+static void
+iw_add_bit_array(struct blob_buf *buf, const char *name, uint32_t bits,
+                 iw_text_t values[], size_t len, bool lower, uint32_t zero)
+{
+	void *c;
+	size_t i;
+	char l[128];
+	const char *v;
+
+	if (!bits)
+		bits = zero;
+
+	c = blobmsg_open_array(buf, name);
+
+	for (i = 0; i < len; i++)
+		if (bits & 1 << i)
+		{
+			v = values[i];
+
+			if (lower)
+			{
+				iw_lower(v, l, strlen(values[i]));
+				v = l;
+			}
+
+			blobmsg_add_string(buf, NULL, v);
+		}
+
+	blobmsg_close_array(buf, c);
+}
+
 static bool rpc_luci_get_iwinfo(struct blob_buf *buf, const char *devname,
                                 bool phy_only)
 {
@@ -875,8 +950,10 @@ static bool rpc_luci_get_iwinfo(struct blob_buf *buf, const char *devname,
 	void *o, *o2, *a;
 	glob_t paths;
 	int nret, i;
+	char text[32];
 
-	if (!iw_backend || !iw_close || !iw_modenames) {
+	if (!iw_backend || !iw_close || !iw_format_hwmodes || !iw_modenames || !iw_80211names ||
+	    !iw_htmodenames || !iw_authnames || !iw_kmgmtnames || !iw_ciphernames) {
 		if (glob("/usr/lib/libiwinfo.so*", 0, NULL, &paths) != 0)
 			return false;
 
@@ -890,9 +967,16 @@ static bool rpc_luci_get_iwinfo(struct blob_buf *buf, const char *devname,
 
 		iw_backend = dlsym(iwlib, "iwinfo_backend");
 		iw_close = dlsym(iwlib, "iwinfo_close");
+		iw_format_hwmodes = dlsym(iwlib, "iwinfo_format_hwmodes");
 		iw_modenames = dlsym(iwlib, "IWINFO_OPMODE_NAMES");
+		iw_80211names = dlsym(iwlib, "IWINFO_80211_NAMES");
+		iw_htmodenames = dlsym(iwlib, "IWINFO_HTMODE_NAMES");
+		iw_authnames = dlsym(iwlib, "IWINFO_AUTH_NAMES");
+		iw_kmgmtnames = dlsym(iwlib, "IWINFO_KMGMT_NAMES");
+		iw_ciphernames = dlsym(iwlib, "IWINFO_CIPHER_NAMES");
 
-		if (!iw_backend || !iw_close || !iw_modenames)
+		if (!iw_backend || !iw_close || !iw_format_hwmodes || !iw_modenames || !iw_80211names ||
+		    !iw_htmodenames || !iw_authnames || !iw_kmgmtnames || !iw_ciphernames)
 			return false;
 	}
 
@@ -914,67 +998,16 @@ static bool rpc_luci_get_iwinfo(struct blob_buf *buf, const char *devname,
 	iw_call_num(iw->frequency_offset, devname, buf, "frequency_offset");
 
 	if (!iw->hwmodelist(devname, &nret)) {
-		a = blobmsg_open_array(buf, "hwmodes");
+		iw_add_bit_array(buf, "hwmodes", nret,
+				iw_80211names, IWINFO_80211_COUNT, true, 0);
 
-		if (nret & IWINFO_80211_AX)
-			blobmsg_add_string(buf, NULL, "ax");
-
-		if (nret & IWINFO_80211_AC)
-			blobmsg_add_string(buf, NULL, "ac");
-
-		if (nret & IWINFO_80211_A)
-			blobmsg_add_string(buf, NULL, "a");
-
-		if (nret & IWINFO_80211_B)
-			blobmsg_add_string(buf, NULL, "b");
-
-		if (nret & IWINFO_80211_G)
-			blobmsg_add_string(buf, NULL, "g");
-
-		if (nret & IWINFO_80211_N)
-			blobmsg_add_string(buf, NULL, "n");
-
-		blobmsg_close_array(buf, a);
+		if (iw_format_hwmodes(nret, text, sizeof(text)) > 0)
+			blobmsg_add_string(buf, "hwmodes_text", text);
 	}
 
-	if (!iw->htmodelist(devname, &nret)) {
-		a = blobmsg_open_array(buf, "htmodes");
-
-		if (nret & IWINFO_HTMODE_HT20)
-			blobmsg_add_string(buf, NULL, "HT20");
-
-		if (nret & IWINFO_HTMODE_HT40)
-			blobmsg_add_string(buf, NULL, "HT40");
-
-		if (nret & IWINFO_HTMODE_VHT20)
-			blobmsg_add_string(buf, NULL, "VHT20");
-
-		if (nret & IWINFO_HTMODE_VHT40)
-			blobmsg_add_string(buf, NULL, "VHT40");
-
-		if (nret & IWINFO_HTMODE_VHT80)
-			blobmsg_add_string(buf, NULL, "VHT80");
-
-		if (nret & IWINFO_HTMODE_VHT80_80)
-			blobmsg_add_string(buf, NULL, "VHT80+80");
-
-		if (nret & IWINFO_HTMODE_VHT160)
-			blobmsg_add_string(buf, NULL, "VHT160");
-
-		if (nret & IWINFO_HTMODE_HE20)
-			blobmsg_add_string(buf, NULL, "HE20");
-
-		if (nret & IWINFO_HTMODE_HE40)
-			blobmsg_add_string(buf, NULL, "HE40");
-
-		if (nret & IWINFO_HTMODE_HE80)
-			blobmsg_add_string(buf, NULL, "HE80");
-
-		if (nret & IWINFO_HTMODE_HE160)
-			blobmsg_add_string(buf, NULL, "HE160");
-
-		blobmsg_close_array(buf, a);
-	}
+	if (!iw->htmodelist(devname, &nret))
+		iw_add_bit_array(buf, "htmodes", nret & ~IWINFO_HTMODE_NOHT,
+				iw_htmodenames, IWINFO_HTMODE_COUNT, false, 0);
 
 	if (!iw->hardware_id(devname, (char *)&ids)) {
 		o2 = blobmsg_open_table(buf, "hardware");
@@ -1009,17 +1042,10 @@ static bool rpc_luci_get_iwinfo(struct blob_buf *buf, const char *devname,
 
 			if (crypto.enabled) {
 				if (!crypto.wpa_version) {
-					a = blobmsg_open_array(buf, "wep");
-
-					if (crypto.auth_algs & IWINFO_AUTH_OPEN)
-					    blobmsg_add_string(buf, NULL, "open");
-
-					if (crypto.auth_algs & IWINFO_AUTH_SHARED)
-					    blobmsg_add_string(buf, NULL, "shared");
-
-					blobmsg_close_array(buf, a);
-				}
-				else {
+					iw_add_bit_array(buf, "wep", crypto.auth_algs,
+							iw_authnames, IWINFO_AUTH_COUNT,
+							true, 0);
+				} else {
 					a = blobmsg_open_array(buf, "wpa");
 
 					for (nret = 1; nret <= 3; nret++)
@@ -1028,55 +1054,16 @@ static bool rpc_luci_get_iwinfo(struct blob_buf *buf, const char *devname,
 
 					blobmsg_close_array(buf, a);
 
-					a = blobmsg_open_array(buf, "authentication");
-
-					if (crypto.auth_suites & IWINFO_KMGMT_PSK)
-						blobmsg_add_string(buf, NULL, "psk");
-
-					if (crypto.auth_suites & IWINFO_KMGMT_8021x)
-						blobmsg_add_string(buf, NULL, "802.1x");
-
-					if (crypto.auth_suites & IWINFO_KMGMT_SAE)
-						blobmsg_add_string(buf, NULL, "sae");
-
-					if (crypto.auth_suites & IWINFO_KMGMT_OWE)
-						blobmsg_add_string(buf, NULL, "owe");
-
-					if (!crypto.auth_suites ||
-					    (crypto.auth_suites & IWINFO_KMGMT_NONE))
-						blobmsg_add_string(buf, NULL, "none");
-
-					blobmsg_close_array(buf, a);
+					iw_add_bit_array(buf, "authentication",
+							crypto.auth_suites,
+							iw_kmgmtnames, IWINFO_KMGMT_COUNT,
+							true, IWINFO_KMGMT_NONE);
 				}
 
-				a = blobmsg_open_array(buf, "ciphers");
-				nret = crypto.pair_ciphers | crypto.group_ciphers;
-
-				if (nret & IWINFO_CIPHER_WEP40)
-					blobmsg_add_string(buf, NULL, "wep-40");
-
-				if (nret & IWINFO_CIPHER_WEP104)
-					blobmsg_add_string(buf, NULL, "wep-104");
-
-				if (nret & IWINFO_CIPHER_TKIP)
-					blobmsg_add_string(buf, NULL, "tkip");
-
-				if (nret & IWINFO_CIPHER_CCMP)
-					blobmsg_add_string(buf, NULL, "ccmp");
-
-				if (nret & IWINFO_CIPHER_WRAP)
-					blobmsg_add_string(buf, NULL, "wrap");
-
-				if (nret & IWINFO_CIPHER_AESOCB)
-					blobmsg_add_string(buf, NULL, "aes-ocb");
-
-				if (nret & IWINFO_CIPHER_CKIP)
-					blobmsg_add_string(buf, NULL, "ckip");
-
-				if (!nret || (nret & IWINFO_CIPHER_NONE))
-					blobmsg_add_string(buf, NULL, "none");
-
-                blobmsg_close_array(buf, a);
+				iw_add_bit_array(buf, "ciphers",
+						crypto.pair_ciphers | crypto.group_ciphers,
+						iw_ciphernames, IWINFO_CIPHER_COUNT,
+						true, IWINFO_CIPHER_NONE);
 			}
 
 			blobmsg_close_table(buf, o2);
@@ -1918,11 +1905,12 @@ rpc_luci_get_dhcp_leases(struct ubus_context *ctx, struct ubus_object *obj,
                          struct ubus_request_data *req, const char *method,
                          struct blob_attr *msg)
 {
+	char s[INET6_ADDRSTRLEN + strlen("/128")];
 	struct blob_attr *tb[__RPC_L_MAX];
 	struct lease_entry *lease;
-	char s[INET6_ADDRSTRLEN];
 	int af, family = 0;
 	void *a, *a2, *o;
+	size_t l;
 	int n;
 
 	blobmsg_parse(rpc_get_leases_policy, __RPC_L_MAX, tb,
@@ -1977,14 +1965,17 @@ rpc_luci_get_dhcp_leases(struct ubus_context *ctx, struct ubus_object *obj,
 				blobmsg_add_string(&blob, "duid", lease->duid);
 
 			inet_ntop(lease->af, &lease->addr[0].in6, s, sizeof(s));
-			blobmsg_add_string(&blob, (af == AF_INET) ? "ipaddr" : "ip6addr",
-			                   s);
+			blobmsg_add_string(&blob, (af == AF_INET) ? "ipaddr" : "ip6addr", s);
 
 			if (af == AF_INET6) {
 				a2 = blobmsg_open_array(&blob, "ip6addrs");
 
 				for (n = 0; n < lease->n_addr; n++) {
 					inet_ntop(lease->af, &lease->addr[n].in6, s, sizeof(s));
+
+					l = strlen(s);
+					snprintf(s + l, sizeof(s) - l, "/%hhu", lease->mask);
+
 					blobmsg_add_string(&blob, NULL, s);
 				}
 

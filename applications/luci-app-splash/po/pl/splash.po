@@ -3,17 +3,17 @@ msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2012-08-24 06:17+0200\n"
-"PO-Revision-Date: 2020-05-02 15:55+0000\n"
-"Last-Translator: Marcin Net <marcin.net@linux.pl>\n"
+"PO-Revision-Date: 2025-01-09 17:47+0000\n"
+"Last-Translator: Piotr Kołtun <pkoltungm@gmail.com>\n"
 "Language-Team: Polish <https://hosted.weblate.org/projects/openwrt/"
 "luciapplicationssplash/pl/>\n"
 "Language: pl\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Plural-Forms: nplurals=3; plural=n==1 ? 0 : n%10>=2 && n%10<=4 && (n%100<10 "
-"|| n%100>=20) ? 1 : 2;\n"
-"X-Generator: Weblate 4.1-dev\n"
+"Plural-Forms: nplurals=3; plural=(n==1 ? 0 : n%10>=2 && n%10<=4 && (n%100<10 "
+"|| n%100>=20) ? 1 : 2);\n"
+"X-Generator: Weblate 5.10-dev\n"
 
 #: applications/luci-app-splash/luasrc/view/splash/splash.htm:53
 msgid "%s with the operator of this access point."
@@ -92,8 +92,8 @@ msgid ""
 "By accepting these rules you can use this network for %s hour(s). After this "
 "time you need to accept these rules again."
 msgstr ""
-"Akceptując te zasady można korzystać z tej sieci na %s godzin(y). Po tym "
-"czasie należy zaakceptować te zasady ponownie."
+"Akceptując te zasady, możesz korzystać z tej sieci przez %s godzin(y). Po "
+"tym czasie należy zaakceptować te zasady ponownie."
 
 # z niemieckiego tłumaczenia
 #: applications/luci-app-splash/luasrc/model/cbi/splash/splash.lua:10
@@ -105,7 +105,7 @@ msgstr "Czas wyzwalacza"
 #: applications/luci-app-splash/luasrc/model/cbi/splash/splash.lua:5
 #: applications/luci-app-splash/luasrc/view/admin_status/splash.htm:197
 msgid "Client-Splash"
-msgstr "Splash kliencki"
+msgstr "Klient Splash"
 
 # nie ma słowa "autentykacja" - to brzydka kalka z angielskiego. 
 #: applications/luci-app-splash/luasrc/model/cbi/splash/splash.lua:5
@@ -120,8 +120,8 @@ msgid ""
 "Clients are redirected to this page after they have accepted the splash. If "
 "this is left empty they are redirected to the page they had requested."
 msgstr ""
-"Klienci są przekierowywani do tej strony po tym, jak zaakceptują splash. "
-"Jeśli to miejsce jest puste zostaną przekierowani do strony którą wybrali."
+"Klienci są przekierowywani na tę stronę po zaakceptowaniu powitania. Jeśli "
+"to miejsce jest puste, zostaną przekierowani do strony, którą wybrali."
 
 #: applications/luci-app-splash/luasrc/model/cbi/splash/splash.lua:15
 msgid "Clients download speed is limited to this value (kbyte/s)"
@@ -132,7 +132,7 @@ msgid ""
 "Clients that have accepted the splash are allowed to use the network for "
 "that many hours."
 msgstr ""
-"Klienci, którzy zaakceptowali Splash, mogą korzystać z sieci przez wiele "
+"Klienci, którzy zaakceptowali powitanie, mogą korzystać z sieci przez wiele "
 "godzin."
 
 #: applications/luci-app-splash/luasrc/model/cbi/splash/splash.lua:14
@@ -173,7 +173,7 @@ msgstr "Zasady dozwolonego użytku"
 
 #: applications/luci-app-splash/luasrc/model/cbi/splash/splash.lua:29
 msgid "Firewall zone"
-msgstr "Strefa zapory sieciowej"
+msgstr "Strefa zapory"
 
 #: applications/luci-app-splash/luasrc/model/cbi/splash/splash.lua:7
 msgid "General"
@@ -185,7 +185,7 @@ msgstr "Skontaktuj się"
 
 #: applications/luci-app-splash/root/usr/share/rpcd/acl.d/luci-app-splash.json:3
 msgid "Grant UCI access for luci-app-splash"
-msgstr "Udziel dostępu UCI do luci-app-splash"
+msgstr "Przyznaj luci-app-splash dostęp do UCI"
 
 #: applications/luci-app-splash/luasrc/view/admin_status/splash.htm:205
 msgid "Hostname"
@@ -296,8 +296,7 @@ msgstr "Zapisz"
 
 #: applications/luci-app-splash/luasrc/model/cbi/splash/splash.lua:30
 msgid "Splash rules are integrated in this firewall zone"
-msgstr ""
-"Reguły komunikatu (Splash) są integrowane z ustawieniami firewalla tej strefy"
+msgstr "Reguły Splash są zintegrowane z tą strefą zapory"
 
 #: applications/luci-app-splash/luasrc/controller/splash/splash.lua:9
 msgid "Splashtext"
@@ -406,9 +405,9 @@ msgid ""
 "possible to use the following markers: ###COMMUNITY###, ###COMMUNITY_URL###, "
 "###CONTACTURL###, ###LEASETIME###, ###LIMIT### and ###ACCEPT###."
 msgstr ""
-"Możesz umieścić tutaj własny tekst wyświetlany dla klientów.<br /> "
-"Dopuszczalne jest używanie następujących znaków: ###COMMUNITY###, "
-"###COMMUNITY_URL###, ###CONTACTURL###, ###LEASETIME###, ###LIMIT### and "
+"Możesz umieścić tutaj własny tekst wyświetlany dla klientów.<br /"
+">Dopuszczalne jest używanie następujących znaczników: ###COMMUNITY###, "
+"###COMMUNITY_URL###, ###CONTACTURL###, ###LEASETIME###, ###LIMIT### oraz "
 "###ACCEPT###."
 
 #: applications/luci-app-splash/luasrc/view/splash/blocked.htm:14

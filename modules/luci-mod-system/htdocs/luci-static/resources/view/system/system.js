@@ -5,13 +5,14 @@
 'require uci';
 'require rpc';
 'require form';
+'require tools.widgets as widgets';
 
-var callInitList, callInitAction, callTimezone,
+var callRcList, callRcInit, callTimezone,
     callGetLocaltime, callSetLocaltime, CBILocalTime;
 
-callInitList = rpc.declare({
-	object: 'luci',
-	method: 'getInitList',
+callRcList = rpc.declare({
+	object: 'rc',
+	method: 'list',
 	params: [ 'name' ],
 	expect: { '': {} },
 	filter: function(res) {
@@ -21,17 +22,17 @@ callInitList = rpc.declare({
 	}
 });
 
-callInitAction = rpc.declare({
-	object: 'luci',
-	method: 'setInitAction',
+callRcInit = rpc.declare({
+	object: 'rc',
+	method: 'init',
 	params: [ 'name', 'action' ],
 	expect: { result: false }
 });
 
 callGetLocaltime = rpc.declare({
-	object: 'luci',
-	method: 'getLocaltime',
-	expect: { result: 0 }
+	object: 'system',
+	method: 'info',
+	expect: { localtime: 0 }
 });
 
 callSetLocaltime = rpc.declare({
@@ -47,6 +48,19 @@ callTimezone = rpc.declare({
 	expect: { '': {} }
 });
 
+function formatTime(epoch) {
+	var date = new Date(epoch * 1000);
+
+	return '%04d-%02d-%02d %02d:%02d:%02d'.format(
+		date.getUTCFullYear(),
+		date.getUTCMonth() + 1,
+		date.getUTCDate(),
+		date.getUTCHours(),
+		date.getUTCMinutes(),
+		date.getUTCSeconds()
+	);
+}
+
 CBILocalTime = form.DummyValue.extend({
 	renderWidget: function(section_id, option_id, cfgvalue) {
 		return E([], [
@@ -54,7 +68,7 @@ CBILocalTime = form.DummyValue.extend({
 				'id': 'localtime',
 				'type': 'text',
 				'readonly': true,
-				'value': new Date(cfgvalue * 1000).toLocaleString()
+				'value': formatTime(cfgvalue)
 			}),
 			E('br'),
 			E('span', { 'class': 'control-group' }, [
@@ -69,7 +83,7 @@ CBILocalTime = form.DummyValue.extend({
 				this.ntpd_support ? E('button', {
 					'class': 'cbi-button cbi-button-apply',
 					'click': ui.createHandlerFn(this, function() {
-						return callInitAction('sysntpd', 'restart');
+						return callRcInit('sysntpd', 'restart');
 					}),
 					'disabled': (this.readonly != null) ? this.readonly : this.map.readonly
 				}, _('Sync with NTP-Server')) : ''
@@ -81,7 +95,7 @@ CBILocalTime = form.DummyValue.extend({
 return view.extend({
 	load: function() {
 		return Promise.all([
-			callInitList('sysntpd'),
+			callRcList('sysntpd'),
 			callTimezone(),
 			callGetLocaltime(),
 			uci.load('luci'),
@@ -145,44 +159,44 @@ return view.extend({
 		 * Logging
 		 */
 
-		o = s.taboption('logging', form.Value, 'log_size', _('System log buffer size'), "kiB")
-		o.optional    = true
-		o.placeholder = 16
-		o.datatype    = 'uinteger'
+		o = s.taboption('logging', form.Value, 'log_size', _('System log buffer size'), "kiB");
+		o.optional    = true;
+		o.placeholder = 128;
+		o.datatype    = 'uinteger';
 
-		o = s.taboption('logging', form.Value, 'log_ip', _('External system log server'))
-		o.optional    = true
-		o.placeholder = '0.0.0.0'
-		o.datatype    = 'host'
+		o = s.taboption('logging', form.Value, 'log_ip', _('External system log server'));
+		o.optional    = true;
+		o.placeholder = '0.0.0.0';
+		o.datatype    = 'host';
 
-		o = s.taboption('logging', form.Value, 'log_port', _('External system log server port'))
-		o.optional    = true
-		o.placeholder = 514
-		o.datatype    = 'port'
+		o = s.taboption('logging', form.Value, 'log_port', _('External system log server port'));
+		o.optional    = true;
+		o.placeholder = 514;
+		o.datatype    = 'port';
 
-		o = s.taboption('logging', form.ListValue, 'log_proto', _('External system log server protocol'))
-		o.value('udp', 'UDP')
-		o.value('tcp', 'TCP')
+		o = s.taboption('logging', form.ListValue, 'log_proto', _('External system log server protocol'));
+		o.value('udp', 'UDP');
+		o.value('tcp', 'TCP');
 
-		o = s.taboption('logging', form.Value, 'log_file', _('Write system log to file'))
-		o.optional    = true
-		o.placeholder = '/tmp/system.log'
+		o = s.taboption('logging', form.Value, 'log_file', _('Write system log to file'));
+		o.optional    = true;
+		o.placeholder = '/tmp/system.log';
 
-		o = s.taboption('logging', form.ListValue, 'conloglevel', _('Log output level'))
-		o.value(8, _('Debug'))
-		o.value(7, _('Info'))
-		o.value(6, _('Notice'))
-		o.value(5, _('Warning'))
-		o.value(4, _('Error'))
-		o.value(3, _('Critical'))
-		o.value(2, _('Alert'))
-		o.value(1, _('Emergency'))
+		o = s.taboption('logging', form.ListValue, 'conloglevel', _('Log output level'), _('Only affects dmesg kernel log'));
+		o.value(8, _('Debug'));
+		o.value(7, _('Info'));
+		o.value(6, _('Notice'));
+		o.value(5, _('Warning'));
+		o.value(4, _('Error'));
+		o.value(3, _('Critical'));
+		o.value(2, _('Alert'));
+		o.value(1, _('Emergency'));
 
-		o = s.taboption('logging', form.ListValue, 'cronloglevel', _('Cron Log Level'))
-		o.default = 8
-		o.value(5, _('Debug'))
-		o.value(8, _('Normal'))
-		o.value(9, _('Warning'))
+		o = s.taboption('logging', form.ListValue, 'cronloglevel', _('Cron Log Level'));
+		o.default = 7;
+		o.value(7, _('Normal'));
+		o.value(9, _('Disabled'));
+		o.value(5, _('Debug'));
 
 		/*
 		 * Zram Properties
@@ -214,10 +228,11 @@ return view.extend({
 		o.ucioption = 'lang';
 		o.value('auto');
 
-		var k = Object.keys(uci.get('luci', 'languages') || {}).sort();
+		var l = Object.assign({ en: 'English' }, uci.get('luci', 'languages')),
+		    k = Object.keys(l).sort();
 		for (var i = 0; i < k.length; i++)
 			if (k[i].charAt(0) != '.')
-				o.value(k[i], uci.get('luci', 'languages', k[i]));
+				o.value(k[i], l[k[i]]);
 
 		o = s.taboption('language', form.ListValue, '_mediaurlbase', _('Design'))
 		o.uciconfig = 'luci';
@@ -256,7 +271,7 @@ return view.extend({
 				else
 					uci.unset('system', 'ntp', 'enabled');
 
-				return callInitAction('sysntpd', 'enable');
+				return callRcInit('sysntpd', 'enable');
 			};
 			o.load = function(section_id) {
 				return (ntpd_enabled == 1 &&
@@ -268,12 +283,22 @@ return view.extend({
 			o.ucisection = 'ntp';
 			o.depends('enabled', '1');
 
+			o = s.taboption('timesync', widgets.NetworkSelect, 'interface',
+				_('Bind NTP server'),
+				_('Provide the NTP server to the selected interface or, if unspecified, to all interfaces'));
+			o.ucisection = 'ntp';
+			o.depends('enable_server', '1');
+			o.multiple = false;
+			o.nocreate = true;
+			o.optional = true;
+
 			o = s.taboption('timesync', form.Flag, 'use_dhcp', _('Use DHCP advertised servers'));
 			o.ucisection = 'ntp';
 			o.default = o.enabled;
 			o.depends('enabled', '1');
 
-			o = s.taboption('timesync', form.DynamicList, 'server', _('NTP server candidates'));
+			o = s.taboption('timesync', form.DynamicList, 'server', _('NTP server candidates'),
+				_('List of upstream NTP server candidates with which to synchronize.'));
 			o.datatype = 'host(0)';
 			o.ucisection = 'ntp';
 			o.depends('enabled', '1');
@@ -285,7 +310,7 @@ return view.extend({
 		return m.render().then(function(mapEl) {
 			poll.add(function() {
 				return callGetLocaltime().then(function(t) {
-					mapEl.querySelector('#localtime').value = new Date(t * 1000).toLocaleString();
+					mapEl.querySelector('#localtime').value = formatTime(t);
 				});
 			});
 

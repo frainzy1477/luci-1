@@ -33,7 +33,7 @@ return baseclass.extend({
 		var cfg = uci.add('dhcp', 'host');
 		uci.set('dhcp', cfg, 'name', lease.hostname);
 		uci.set('dhcp', cfg, 'ip', lease.ipaddr);
-		uci.set('dhcp', cfg, 'mac', lease.macaddr.toUpperCase());
+		uci.set('dhcp', cfg, 'mac', [lease.macaddr.toUpperCase()]);
 
 		return uci.save()
 			.then(L.bind(L.ui.changes.init, L.ui.changes))
@@ -50,7 +50,7 @@ return baseclass.extend({
 
 		uci.set('dhcp', cfg, 'name', lease.hostname);
 		uci.set('dhcp', cfg, 'duid', lease.duid.toUpperCase());
-		uci.set('dhcp', cfg, 'mac', lease.macaddr);
+		uci.set('dhcp', cfg, 'mac', [lease.macaddr]);
 		if (ip6arr)
 			uci.set('dhcp', cfg, 'hostid', (ip6arr[6] * 0xFFFF + ip6arr[7]).toString(16));
 
@@ -82,7 +82,7 @@ return baseclass.extend({
 			}
 		};
 
-		var table = E('table', { 'class': 'table lases' }, [
+		var table = E('table', { 'id': 'status_leases', 'class': 'table lases' }, [
 			E('tr', { 'class': 'tr table-titles' }, [
 				E('th', { 'class': 'th' }, _('Hostname')),
 				E('th', { 'class': 'th' }, _('IPv4 address')),
@@ -102,8 +102,16 @@ return baseclass.extend({
 			else
 				exp = '%t'.format(lease.expires);
 
+			var hint = lease.macaddr ? machints.filter(function(h) { return h[0] == lease.macaddr })[0] : null,
+			    host = null;
+
+			if (hint && lease.hostname && lease.hostname != hint[1])
+				host = '%s (%s)'.format(lease.hostname, hint[1]);
+			else if (lease.hostname)
+				host = lease.hostname;
+
 			rows = [
-				lease.hostname || '-',
+				host || '-',
 				lease.ipaddr,
 				lease.macaddr,
 				exp
@@ -121,7 +129,7 @@ return baseclass.extend({
 			return rows;
 		}, this)), E('em', _('There are no active leases')));
 
-		var table6 = E('table', { 'class': 'table leases6' }, [
+		var table6 = E('table', { 'id': 'status_leases6', 'class': 'table leases6' }, [
 			E('tr', { 'class': 'tr table-titles' }, [
 				E('th', { 'class': 'th' }, _('Host')),
 				E('th', { 'class': 'th' }, _('IPv6 address')),
@@ -153,7 +161,7 @@ return baseclass.extend({
 
 			rows = [
 				host || '-',
-				lease.ip6addrs ? lease.ip6addrs.join(' ') : lease.ip6addr,
+				lease.ip6addrs ? lease.ip6addrs.join('<br />') : lease.ip6addr,
 				lease.duid,
 				exp
 			];

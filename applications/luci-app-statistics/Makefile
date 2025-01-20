@@ -6,10 +6,11 @@
 
 include $(TOPDIR)/rules.mk
 
+PKG_LICENSE:=Apache-2.0
+
 LUCI_TITLE:=LuCI Statistics Application
 LUCI_DEPENDS:= \
 	+luci-base \
-	+luci-lib-jsonc \
 	+collectd \
 	+rrdtool1 \
 	+collectd-mod-rrdtool \
@@ -19,6 +20,8 @@ LUCI_DEPENDS:= \
 	+collectd-mod-interface \
 	+collectd-mod-load \
 	+collectd-mod-network
+
+PKG_MAINTAINER:=Jo-Philipp Wich <jo@mein.io>
 
 define Package/luci-app-statistics/conffiles
 /etc/config/luci_statistics

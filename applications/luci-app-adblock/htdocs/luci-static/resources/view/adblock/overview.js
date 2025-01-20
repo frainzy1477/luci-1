@@ -53,7 +53,7 @@ function handleAction(ev) {
 				E('label', { 'class': 'cbi-input-text', 'style': 'padding-top:.5em' }, [
 				E('input', { 'class': 'cbi-input-text', 'id': 'timerD', 'maxlength': '13' }),
 				'\xa0\xa0\xa0',
-				_('The day of the week (opt., values: 1-7 possibly sep. by , or -)')
+				_('The day of the week (opt., values: 0-6 possibly sep. by , or -)')
 				])
 			]),
 			E('div', { 'class': 'left', 'style': 'display:flex; flex-direction:column' }, [
@@ -131,7 +131,7 @@ return view.extend({
 	},
 
 	render: function(result) {
-		var m, s, o;
+		let m, s, o;
 
 		m = new form.Map('adblock', 'Adblock', _('Configuration of the adblock package to block ad/abuse domains by using DNS. \
 			For further information <a href="https://github.com/openwrt/packages/blob/master/net/adblock/files/README.md" target="_blank" rel="noreferrer noopener" >check the online documentation</a>'));
@@ -180,9 +180,9 @@ return view.extend({
 				if (sources && info) {
 					for (var i = 0; i < info.active_sources.length; i++) {
 						if (i < info.active_sources.length-1) {
-							src_array += info.active_sources[i].source + ', ';
+							src_array += info.active_sources[i] + ', ';
 						} else {
-							src_array += info.active_sources[i].source
+							src_array += info.active_sources[i]
 						}
 					}
 					sources.textContent = src_array || '-';
@@ -311,7 +311,6 @@ return view.extend({
 
 		o = s.taboption('general', widgets.NetworkSelect, 'adb_trigger', _('Startup Trigger Interface'), _('List of available network interfaces to trigger the adblock start. \
 			Choose \'unspecified\' to use a classic startup timeout instead of a network trigger.'));
-		o.unspecified = true;
 		o.nocreate = true;
 		o.rmempty = true;
 
@@ -320,20 +319,22 @@ return view.extend({
 
 		o = s.taboption('general', widgets.ZoneSelect, 'adb_zonelist', _('Forced Zones'), _('Firewall source zones that should be forced locally.'));
 		o.depends('adb_forcedns', '1');
-		o.unspecified = true;
 		o.multiple = true;
 		o.nocreate = true;
 		o.rmempty = true;
 
 		o = s.taboption('general', form.DynamicList, 'adb_portlist', _('Forced Ports'), _('Firewall ports that should be forced locally.'));
 		o.depends('adb_forcedns', '1');
-		o.unspecified = true;
 		o.multiple = true;
 		o.nocreate = false;
 		o.datatype = 'port';
 		o.value('53');
 		o.value('853');
 		o.value('5353');
+		o.rmempty = true;
+
+		o = s.taboption('general', form.Flag, 'adb_tld', _('TLD Compression'), _('The top level domain compression removes thousands of needless host entries from the final DNS blocklist.'));
+		o.default = 1
 		o.rmempty = true;
 
 		o = s.taboption('general', form.Flag, 'adb_safesearch', _('Enable SafeSearch'), _('Enforcing SafeSearch for google, bing, duckduckgo, yandex, youtube and pixabay.'));
@@ -343,6 +344,7 @@ return view.extend({
 		o.depends('adb_safesearch', '1');
 		o.value('google');
 		o.value('bing');
+		o.value('duckduckgo');
 		o.value('yandex');
 		o.value('youtube');
 		o.value('pixabay');
@@ -353,7 +355,7 @@ return view.extend({
 		o.rmempty = true;
 
 		o = s.taboption('general', form.Flag, 'adb_report', _('DNS Report'), _('Gather DNS related network traffic via tcpdump and provide a DNS Report on demand. \
-			Please note: this needs additional \'tcpdump-mini\' package installation and a full adblock service restart to take effect.'));
+			Please note: this needs additional \'tcpdump\' or \'tcpdump-mini\' package installation and a full adblock service restart to take effect.'));
 		o.rmempty = false;
 
 		o = s.taboption('general', form.Flag, 'adb_mail', _('E-Mail Notification'), _('Send adblock related notification e-mails. \
@@ -380,15 +382,6 @@ return view.extend({
 		o.placeholder = '2';
 		o.datatype = 'range(1,300)';
 		o.rmempty = true;
-
-		o = s.taboption('additional', form.ListValue, 'adb_maxqueue', _('Download Queue'), _('Size of the download queue for download processing (incl. sorting, merging etc.) in parallel.'));
-		o.value('1');
-		o.value('2');
-		o.value('4');
-		o.value('8');
-		o.value('16');
-		o.value('32');
-		o.rmempty = false;
 
 		o = s.taboption('additional', form.Value, 'adb_tmpbase', _('Base Temp Directory'), _('Base Temp Directory for all adblock related runtime operations, \
 			e.g. downloading, sorting, merging etc.'));
@@ -457,7 +450,7 @@ return view.extend({
 		o.placeholder = 'example.com';
 		o.rmempty = true;
 
-		o = s.taboption('adv_dns', form.Flag, 'adb_dnsflush', _('Flush DNS Cache'), _('Flush the DNS Cache before adblock processing as well.'));
+		o = s.taboption('adv_dns', form.Flag, 'adb_dnsflush', _('Flush DNS Cache'), _('Empty the DNS cache before adblock processing starts to reduce the memory consumption.'));
 		o.rmempty = true;
 
 		o = s.taboption('adv_dns', form.Flag, 'adb_dnsallow', _('Disable DNS Allow'), _('Disable selective DNS whitelisting (RPZ-PASSTHRU).'));
@@ -484,10 +477,6 @@ return view.extend({
 		o.placeholder = '/tmp';
 		o.rmempty = true;
 
-		o = s.taboption('adv_dns', form.Flag, 'adb_dnsinotify', _('Disable DNS Restarts'), _('Disable adblock triggered restarts for dns backends with autoload/inotify functions.'));
-		o.depends('adb_dnsflush', '0');
-		o.rmempty = true;
-
 		/*
 			advanced report settings tab
 		*/
@@ -496,7 +485,6 @@ return view.extend({
 		o.default = '<em><b>Changes on this tab needs a full adblock service restart to take effect.</b></em>';
 
 		o = s.taboption('adv_report', widgets.DeviceSelect, 'adb_repiface', _('Report Interface'), _('List of available network devices used by tcpdump.'));
-		o.unspecified = true;
 		o.nocreate = false;
 		o.rmempty = true;
 
@@ -580,21 +568,6 @@ return view.extend({
 
 		o = s.taboption('sources', form.DummyValue, '_sub');
 		o.rawhtml = true;
-		o.default = '<em><b>Shallalist Archive Selection</b></em>';
-
-		o = s.taboption('sources', form.DynamicList, 'adb_sha_sources', _('Categories'));
-		for (var i = 0; i < categories.length; i++) {
-			code = categories[i].match(/^(\w+);/)[1].trim();
-			if (code === 'sha') {
-				category = categories[i].match(/^\w+;(.*$)/)[1].trim();
-				o.value(category);
-			}
-		}
-		o.optional = true;
-		o.rmempty = true;
-
-		o = s.taboption('sources', form.DummyValue, '_sub');
-		o.rawhtml = true;
 		o.default = '<em><b>UTCapitole Archive Selection</b></em>';
 
 		o = s.taboption('sources', form.DynamicList, 'adb_utc_sources', _('Categories'));
@@ -610,12 +583,12 @@ return view.extend({
 
 		o = s.taboption('sources', form.DummyValue, '_sub');
 		o.rawhtml = true;
-		o.default = '<em><b>Energized List Selection</b></em>';
+		o.default = '<em><b>StevenBlack List Selection</b></em>';
 
-		o = s.taboption('sources', form.DynamicList, 'adb_eng_sources', _('Variants'));
+		o = s.taboption('sources', form.DynamicList, 'adb_stb_sources', _('Variants'));
 		for (var i = 0; i < categories.length; i++) {
 			code = categories[i].match(/^(\w+);/)[1].trim();
-			if (code === 'eng') {
+			if (code === 'stb') {
 				list = categories[i].match(/^\w+;(.*);/)[1].trim();
 				path = categories[i].match(/^.*;(.*$)/)[1].trim();
 				o.value(path, list);
@@ -626,12 +599,28 @@ return view.extend({
 
 		o = s.taboption('sources', form.DummyValue, '_sub');
 		o.rawhtml = true;
-		o.default = '<em><b>StevenBlack List Selection</b></em>';
+		o.default = '<em><b>Hagezi List Selection</b></em>';
 
-		o = s.taboption('sources', form.DynamicList, 'adb_stb_sources', _('Variants'));
+		o = s.taboption('sources', form.DynamicList, 'adb_hag_sources', _('Variants'));
 		for (var i = 0; i < categories.length; i++) {
 			code = categories[i].match(/^(\w+);/)[1].trim();
-			if (code === 'stb') {
+			if (code === 'hag') {
+				list = categories[i].match(/^\w+;(.*);/)[1].trim();
+				path = categories[i].match(/^.*;(.*$)/)[1].trim();
+				o.value(path, list);
+			}
+		}
+		o.optional = true;
+		o.rmempty = true;
+
+		o = s.taboption('sources', form.DummyValue, '_sub');
+		o.rawhtml = true;
+		o.default = '<em><b>1Hosts List Selection</b></em>';
+
+		o = s.taboption('sources', form.DynamicList, 'adb_hst_sources', _('Variants'));
+		for (var i = 0; i < categories.length; i++) {
+			code = categories[i].match(/^(\w+);/)[1].trim();
+			if (code === 'hst') {
 				list = categories[i].match(/^\w+;(.*);/)[1].trim();
 				path = categories[i].match(/^.*;(.*$)/)[1].trim();
 				o.value(path, list);

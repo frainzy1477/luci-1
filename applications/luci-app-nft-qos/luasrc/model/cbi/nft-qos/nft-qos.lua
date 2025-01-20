@@ -30,9 +30,9 @@ s = m:section(TypedSection, "default", translate("NFT-QoS Settings"))
 s.addremove = false
 s.anonymous = true
 
-s:tab("limit", "Limit Rate by IP Address")
-s:tab("limitmac", "Limit Rate by Mac Address")
-s:tab("priority", "Traffic Priority")
+s:tab("limit", translate("Limit Rate by IP Address"))
+s:tab("limitmac", translate("Limit Rate by Mac Address"))
+s:tab("priority", translate("Traffic Priority"))
 
 --
 -- Static
@@ -98,6 +98,13 @@ end
 o = s:taboption("limit", DynamicList, "limit_whitelist", translate("White List for Limit Rate"))
 o.datatype = "ipaddr"
 o:depends("limit_enable","1")
+
+--
+-- limit speed by mac address
+--
+o = s:taboption("limitmac", Flag, "limit_mac_enable", translate("Limit Enable"), translate("Enable Limit Rate Feature"))
+o.default = limit_mac_enable or o.enabled
+o.rmempty = false
 
 --
 -- Priority
@@ -167,10 +174,6 @@ if limit_enable == "1" and limit_type == "static" then
 		o.titleref = luci.dispatcher.build_url("admin", "status", "overview")
 	end
 
-	o = y:option(Value, "macaddr", translate("MAC (optional)"))
-	o.rmempty = true
-	o.datatype = "macaddr"
-
 	o = y:option(Value, "rate", translate("Rate"))
 	o.default = def_rate_ul or '50'
 	o.size = 4
@@ -223,13 +226,6 @@ if enable_priority == "1" then
 	o.default = '?'
 
 end
-
---
--- limit speed by mac address
---
-o = s:taboption("limitmac", Flag, "limit_mac_enable", translate("Limit Enable"), translate("Enable Limit Rate Feature"))
-o.default = limit_mac_enable or o.enabled
-o.rmempty = false
 
 --
 -- Static By Mac Address

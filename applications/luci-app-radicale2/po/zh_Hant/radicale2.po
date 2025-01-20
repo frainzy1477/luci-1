@@ -1,16 +1,16 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: luci-app-radicale 2\n"
-"PO-Revision-Date: 2021-05-02 20:06+0000\n"
-"Last-Translator: Trevor <wowpapa3232@gmail.com>\n"
-"Language-Team: Chinese (Traditional) <https://hosted.weblate.org/projects/"
-"openwrt/luciapplicationsradicale2/zh_Hant/>\n"
+"PO-Revision-Date: 2025-01-19 12:17+0000\n"
+"Last-Translator: x86_64-pc-linux-gnu <x86_64-pc-linux-gnu@proton.me>\n"
+"Language-Team: Chinese (Traditional Han script) <https://hosted.weblate.org/"
+"projects/openwrt/luciapplicationsradicale2/zh_Hant/>\n"
 "Language: zh_Hant\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=1; plural=0;\n"
-"X-Generator: Weblate 4.7-dev\n"
+"X-Generator: Weblate 5.10-dev\n"
 
 #: applications/luci-app-radicale2/luasrc/model/cbi/radicale2/auth.lua:8
 #: applications/luci-app-radicale2/luasrc/model/cbi/radicale2/logging.lua:4
@@ -126,7 +126,7 @@ msgstr "加密(Encryption)"
 
 #: applications/luci-app-radicale2/luasrc/model/cbi/radicale2/auth.lua:23
 msgid "Filename"
-msgstr "檔名"
+msgstr "檔案名稱"
 
 #: applications/luci-app-radicale2/luasrc/model/cbi/radicale2/storage.lua:19
 msgid "Folder"
@@ -221,7 +221,7 @@ msgstr "安裝python3-passlib和python3-bcrypt以啟用安全雜湊函式"
 #: applications/luci-app-radicale2/luasrc/model/cbi/radicale2/logging.lua:12
 msgid ""
 "Log configuration file (no file means default procd which ends up in syslog"
-msgstr "日誌組態檔（如未上傳檔案，則預設將 procd 的日誌寫入 syslog）"
+msgstr "日誌設定檔（如未上傳檔案，則預設將 procd 的日誌寫入 syslog）"
 
 #: applications/luci-app-radicale2/luasrc/controller/radicale2.lua:29
 #: applications/luci-app-radicale2/luasrc/model/cbi/radicale2/logging.lua:6
@@ -340,11 +340,11 @@ msgstr "刪除憑證、金鑰和CA的設置"
 
 #: applications/luci-app-radicale2/luasrc/model/cbi/radicale2/logging.lua:16
 msgid "Remove configuration for logging"
-msgstr "刪除設置以進行日誌記錄"
+msgstr "刪除設定以進行日誌記錄"
 
 #: applications/luci-app-radicale2/luasrc/model/cbi/radicale2/auth.lua:181
 msgid "Remove configuration for rights file"
-msgstr "刪除組態和權限檔"
+msgstr "刪除權限檔案的設定"
 
 #: applications/luci-app-radicale2/luasrc/model/cbi/radicale2/server.lua:136
 msgid "Request"
@@ -415,7 +415,7 @@ msgstr "插槽逾時（秒）"
 #: applications/luci-app-radicale2/luasrc/model/cbi/radicale2/server.lua:140
 #: applications/luci-app-radicale2/luasrc/model/cbi/radicale2/storage.lua:9
 msgid "Storage"
-msgstr "儲存"
+msgstr "儲存空間使用"
 
 #: applications/luci-app-radicale2/luasrc/model/cbi/radicale2/storage.lua:13
 msgid "Storage Type"
@@ -431,11 +431,11 @@ msgstr "這將永久刪除證書、金鑰及相同使用的配置。"
 
 #: applications/luci-app-radicale2/luasrc/model/cbi/radicale2/auth.lua:182
 msgid "This permanently deletes the rights file and configuration to use same."
-msgstr "這將永久刪除權限檔及其相關組態。"
+msgstr "這將永久刪除權限檔及其相關設定。"
 
 #: applications/luci-app-radicale2/luasrc/model/cbi/radicale2/server.lua:47
 msgid "Timeout"
-msgstr "逾時值"
+msgstr "逾時"
 
 #: applications/luci-app-radicale2/luasrc/model/cbi/radicale2/storage.lua:25
 msgid "Use File Locks"
@@ -447,7 +447,7 @@ msgstr "使用協定"
 
 #: applications/luci-app-radicale2/luasrc/model/cbi/radicale2/auth.lua:66
 msgid "User"
-msgstr "用戶"
+msgstr "使用者"
 
 #: applications/luci-app-radicale2/luasrc/model/cbi/radicale2/auth.lua:162
 msgid "User-based ACL Settings"

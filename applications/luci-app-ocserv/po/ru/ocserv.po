@@ -1,15 +1,15 @@
 msgid ""
 msgstr ""
-"PO-Revision-Date: 2021-09-17 06:52+0000\n"
-"Last-Translator: masta0f1eave <lomskoff.dima@gmail.com>\n"
+"PO-Revision-Date: 2024-01-23 10:05+0000\n"
+"Last-Translator: st7105 <st7105@gmail.com>\n"
 "Language-Team: Russian <https://hosted.weblate.org/projects/openwrt/"
 "luciapplicationsocserv/ru/>\n"
 "Language: ru\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Plural-Forms: nplurals=3; plural=n%10==1 && n%100!=11 ? 0 : n%10>=2 && n"
-"%10<=4 && (n%100<10 || n%100>=20) ? 1 : 2;\n"
-"X-Generator: Weblate 4.9-dev\n"
+"Plural-Forms: nplurals=3; plural=n%10==1 && n%100!=11 ? 0 : n%10>=2 && "
+"n%10<=4 && (n%100<10 || n%100>=20) ? 1 : 2;\n"
+"X-Generator: Weblate 5.4-dev\n"
 
 #: applications/luci-app-ocserv/luasrc/model/cbi/ocserv/main.lua:124
 #: applications/luci-app-ocserv/luasrc/model/cbi/ocserv/user-config.lua:80
@@ -17,6 +17,8 @@ msgid ""
 "<abbr title=\"Classless Inter-Domain Routing\">CIDR</abbr>-Notation: address/"
 "prefix"
 msgstr ""
+"<abbr title=\"Бесклассовая Междоменная Маршрутизация\">CIDR</abbr>-Запись: "
+"адрес/префикс"
 
 #: applications/luci-app-ocserv/luasrc/view/ocserv_status.htm:48
 msgid "Active OpenConnect Users"
@@ -38,7 +40,7 @@ msgstr "Доступные пользователи"
 #: applications/luci-app-ocserv/luasrc/model/cbi/ocserv/main.lua:13
 #: applications/luci-app-ocserv/luasrc/model/cbi/ocserv/user-config.lua:13
 msgid "CA certificate"
-msgstr "Сертификат удостоверяющего центра"
+msgstr "Сертификат CA"
 
 #: applications/luci-app-ocserv/luasrc/model/cbi/ocserv/users.lua:72
 #: applications/luci-app-ocserv/luasrc/view/ocserv_status.htm:57
@@ -57,7 +59,7 @@ msgstr "DNS-серверы"
 #: applications/luci-app-ocserv/luasrc/model/cbi/ocserv/main.lua:60
 #: applications/luci-app-ocserv/luasrc/model/cbi/ocserv/user-config.lua:54
 msgid "Dead peer detection time (secs)"
-msgstr ""
+msgstr "Время обнаружения \"мёртвого узла\" (сек)"
 
 #: applications/luci-app-ocserv/luasrc/model/cbi/ocserv/users.lua:70
 #: applications/luci-app-ocserv/luasrc/view/ocserv_status.htm:55
@@ -87,6 +89,8 @@ msgid ""
 "Enable UDP channel support; this must be enabled unless you know what you "
 "are doing"
 msgstr ""
+"Включить поддержку UDP channel; опция должна быть включена только если вы "
+"знаете что делаете"
 
 #: applications/luci-app-ocserv/luasrc/model/cbi/ocserv/main.lua:66
 #: applications/luci-app-ocserv/luasrc/model/cbi/ocserv/main.lua:67
@@ -114,7 +118,7 @@ msgstr "Зона брандмауэра"
 #: applications/luci-app-ocserv/luasrc/model/cbi/ocserv/main.lua:12
 #: applications/luci-app-ocserv/luasrc/model/cbi/ocserv/user-config.lua:12
 msgid "General Settings"
-msgstr "Общие настройки"
+msgstr "Основные настройки"
 
 #: applications/luci-app-ocserv/root/usr/share/rpcd/acl.d/luci-app-ocserv.json:3
 msgid "Grant UCI access for luci-app-ocserv"
@@ -212,7 +216,7 @@ msgstr "ID публичного ключа сервера"
 #: applications/luci-app-ocserv/luasrc/model/cbi/ocserv/users.lua:73
 #: applications/luci-app-ocserv/luasrc/view/ocserv_status.htm:58
 msgid "Status"
-msgstr "Состояние"
+msgstr "Статус"
 
 #: applications/luci-app-ocserv/luasrc/model/cbi/ocserv/user-config.lua:112
 msgid "The DNS servers to be provided to clients; can be either IPv6 or IPv4"

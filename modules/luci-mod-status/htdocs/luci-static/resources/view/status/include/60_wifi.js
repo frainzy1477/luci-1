@@ -28,13 +28,22 @@ return baseclass.extend({
 		var s = '%.1f\xa0%s, %d\xa0%s'.format(rt.rate / 1000, _('Mbit/s'), rt.mhz, _('MHz')),
 		    ht = rt.ht, vht = rt.vht,
 			mhz = rt.mhz, nss = rt.nss,
-			mcs = rt.mcs, sgi = rt.short_gi;
+			mcs = rt.mcs, sgi = rt.short_gi,
+			he = rt.he, he_gi = rt.he_gi,
+			he_dcm = rt.he_dcm;
 
 		if (ht || vht) {
 			if (vht) s += ', VHT-MCS\xa0%d'.format(mcs);
 			if (nss) s += ', VHT-NSS\xa0%d'.format(nss);
 			if (ht)  s += ', MCS\xa0%s'.format(mcs);
 			if (sgi) s += ', ' + _('Short GI').replace(/ /g, '\xa0');
+		}
+
+		if (he) {
+			s += ', HE-MCS\xa0%d'.format(mcs);
+			if (nss) s += ', HE-NSS\xa0%d'.format(nss);
+			if (he_gi) s += ', HE-GI\xa0%d'.format(he_gi);
+			if (he_dcm) s += ', HE-DCM\xa0%d'.format(he_dcm);
 		}
 
 		return s;
@@ -175,7 +184,7 @@ return baseclass.extend({
 			network.getHostHints(),
 			this.callSessionAccess('access-group', 'luci-mod-status-index-wifi', 'read'),
 			this.callSessionAccess('access-group', 'luci-mod-status-index-wifi', 'write'),
-			uci.load('wireless')
+			L.hasSystemFeature('wifi') ? L.resolveDefault(uci.load('wireless')) : L.resolveDefault(),
 		]).then(L.bind(function(data) {
 			var tasks = [],
 			    radios_networks_hints = data[1],
@@ -218,7 +227,7 @@ return baseclass.extend({
 		if (!table.lastElementChild)
 			return null;
 
-		var assoclist = E('table', { 'class': 'table assoclist' }, [
+		var assoclist = E('table', { 'class': 'table assoclist', 'id': 'wifi_assoclist_table' }, [
 			E('tr', { 'class': 'tr table-titles' }, [
 				E('th', { 'class': 'th nowrap' }, _('Network')),
 				E('th', { 'class': 'th hide-xs' }, _('MAC address')),

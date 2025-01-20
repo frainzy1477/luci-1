@@ -6,6 +6,7 @@
 'require form';
 'require network';
 'require firewall';
+'require validation';
 'require tools.prng as random';
 
 var protocols = [
@@ -455,9 +456,10 @@ return baseclass.extend({
 
 	addIPOption: function(s, tab, name, label, description, family, hosts, multiple) {
 		var o = s.taboption(tab, multiple ? this.CBIDynamicMultiValueList : form.Value, name, label, description);
+		var fw4 = L.hasSystemFeature('firewall4');
 
 		o.modalonly = true;
-		o.datatype = 'list(neg(ipmask("true")))';
+		o.datatype = (fw4 && validation.types.iprange) ? 'list(neg(or(ipmask("true"),iprange)))' : 'list(neg(ipmask("true")))';
 		o.placeholder = multiple ? _('-- add IP --') : _('any');
 
 		if (family != null) {
@@ -477,23 +479,33 @@ return baseclass.extend({
 
 	addLocalIPOption: function(s, tab, name, label, description, devices) {
 		var o = s.taboption(tab, form.Value, name, label, description);
+		var fw4 = L.hasSystemFeature('firewall4');
 
 		o.modalonly = true;
-		o.datatype = 'ip4addr("nomask")';
+		o.datatype = !fw4?'ip4addr("nomask")':'ipaddr("nomask")';
 		o.placeholder = _('any');
 
 		L.sortedKeys(devices, 'name').forEach(function(dev) {
 			var ip4addrs = devices[dev].ipaddrs;
+			var ip6addrs = devices[dev].ip6addrs;
 
-			if (!L.isObject(devices[dev].flags) || !Array.isArray(ip4addrs) || devices[dev].flags.loopback)
+			if (!L.isObject(devices[dev].flags) || devices[dev].flags.loopback)
 				return;
 
-			for (var i = 0; i < ip4addrs.length; i++) {
+			for (var i = 0; Array.isArray(ip4addrs) && i < ip4addrs.length; i++) {
 				if (!L.isObject(ip4addrs[i]) || !ip4addrs[i].address)
 					continue;
 
 				o.value(ip4addrs[i].address, E([], [
 					ip4addrs[i].address, ' (', E('strong', {}, [dev]), ')'
+				]));
+			}
+			for (var i = 0; fw4 && Array.isArray(ip6addrs) && i < ip6addrs.length; i++) {
+				if (!L.isObject(ip6addrs[i]) || !ip6addrs[i].address)
+					continue;
+
+				o.value(ip6addrs[i].address, E([], [
+					ip6addrs[i].address, ' (', E('strong', {}, [dev]), ')'
 				]));
 			}
 		});
@@ -590,8 +602,7 @@ return baseclass.extend({
 			});
 
 			widget.createChoiceElement = function(sb, value) {
-				var m = value.match(/^(0x[0-9a-f]{1,2}|[0-9]{1,3})$/),
-				    p = lookupProto(lookupProto(m ? +m[1] : value)[0]);
+				var p = lookupProto(value);
 
 				return ui.Dropdown.prototype.createChoiceElement.call(this, sb, p[2], p[1]);
 			};
@@ -601,8 +612,10 @@ return baseclass.extend({
 					var m = value.match(/^(0x[0-9a-f]{1,2}|[0-9]{1,3})$/),
 					    p = lookupProto(m ? +m[1] : value);
 
-					return (p[0] > -1) ? p[2] : value;
+					return (p[0] > -1) ? p[2] : p[1];
 				});
+
+				values.sort();
 
 				return ui.Dropdown.prototype.createItems.call(this, sb, values.join(' '));
 			};

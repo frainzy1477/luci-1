@@ -1,14 +1,14 @@
 msgid ""
 msgstr ""
-"PO-Revision-Date: 2021-09-18 16:54+0000\n"
-"Last-Translator: pisquan8 <cimurro@outlook.de>\n"
+"PO-Revision-Date: 2024-04-19 13:18+0000\n"
+"Last-Translator: ettore <hettore.giacomini@gmail.com>\n"
 "Language-Team: Italian <https://hosted.weblate.org/projects/openwrt/"
 "luciapplicationsocserv/it/>\n"
 "Language: it\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=n != 1;\n"
-"X-Generator: Weblate 4.9-dev\n"
+"X-Generator: Weblate 5.5-dev\n"
 
 #: applications/luci-app-ocserv/luasrc/model/cbi/ocserv/main.lua:124
 #: applications/luci-app-ocserv/luasrc/model/cbi/ocserv/user-config.lua:80
@@ -16,10 +16,12 @@ msgid ""
 "<abbr title=\"Classless Inter-Domain Routing\">CIDR</abbr>-Notation: address/"
 "prefix"
 msgstr ""
+"<abbr title=\"Classless Inter-Domain Routing\">CIDR</abbr>-Notazione: "
+"indirizzo/prefisso"
 
 #: applications/luci-app-ocserv/luasrc/view/ocserv_status.htm:48
 msgid "Active OpenConnect Users"
-msgstr ""
+msgstr "Utenti OpenConnect attivi"
 
 #: applications/luci-app-ocserv/luasrc/model/cbi/ocserv/users.lua:61
 msgid "Active users"
@@ -28,7 +30,7 @@ msgstr "Utenti attivi"
 #: applications/luci-app-ocserv/luasrc/model/cbi/ocserv/main.lua:74
 #: applications/luci-app-ocserv/luasrc/model/cbi/ocserv/user-config.lua:64
 msgid "AnyConnect client compatibility"
-msgstr ""
+msgstr "Compatibilità del client AnyConnect"
 
 #: applications/luci-app-ocserv/luasrc/model/cbi/ocserv/users.lua:17
 msgid "Available users"
@@ -42,7 +44,7 @@ msgstr "Certificato CA"
 #: applications/luci-app-ocserv/luasrc/model/cbi/ocserv/users.lua:72
 #: applications/luci-app-ocserv/luasrc/view/ocserv_status.htm:57
 msgid "Cipher"
-msgstr "Algoritmo cifratura"
+msgstr "Cifrario"
 
 #: applications/luci-app-ocserv/luasrc/view/ocserv_status.htm:62
 msgid "Collecting data..."
@@ -125,7 +127,7 @@ msgstr "Gruppo"
 
 #: applications/luci-app-ocserv/luasrc/model/cbi/ocserv/users.lua:65
 msgid "ID"
-msgstr ""
+msgstr "ID"
 
 #: applications/luci-app-ocserv/luasrc/model/cbi/ocserv/users.lua:68
 msgid "IP"
@@ -142,7 +144,7 @@ msgstr "Indirizzo IP"
 #: applications/luci-app-ocserv/luasrc/model/cbi/ocserv/main.lua:58
 #: applications/luci-app-ocserv/luasrc/model/cbi/ocserv/user-config.lua:52
 msgid "Max clients"
-msgstr ""
+msgstr "Numero massimo di client"
 
 #: applications/luci-app-ocserv/luasrc/model/cbi/ocserv/main.lua:59
 #: applications/luci-app-ocserv/luasrc/model/cbi/ocserv/user-config.lua:53
@@ -172,7 +174,7 @@ msgstr "Password"
 #: applications/luci-app-ocserv/luasrc/model/cbi/ocserv/main.lua:56
 #: applications/luci-app-ocserv/luasrc/model/cbi/ocserv/user-config.lua:50
 msgid "Port"
-msgstr "Port"
+msgstr "Porta"
 
 #: applications/luci-app-ocserv/luasrc/model/cbi/ocserv/main.lua:62
 #: applications/luci-app-ocserv/luasrc/model/cbi/ocserv/user-config.lua:56
@@ -276,11 +278,11 @@ msgstr ""
 #: applications/luci-app-ocserv/luasrc/model/cbi/ocserv/users.lua:71
 #: applications/luci-app-ocserv/luasrc/view/ocserv_status.htm:56
 msgid "Time"
-msgstr ""
+msgstr "Orario"
 
 #: applications/luci-app-ocserv/luasrc/view/ocserv_status.htm:51
 msgid "User"
-msgstr ""
+msgstr "Utente"
 
 #: applications/luci-app-ocserv/luasrc/model/cbi/ocserv/main.lua:49
 #: applications/luci-app-ocserv/luasrc/model/cbi/ocserv/user-config.lua:37

@@ -28,13 +28,13 @@ return baseclass.extend({
 					instances: {
 						cpu: [
 							...(show_idle ? ["idle"] : []),
-							"interrupt",
 							"nice",
-							"softirq",
-							"steal",
-							"system",
 							"user",
-							"wait"
+							"wait",
+							"system",
+							"softirq",
+							"interrupt",
+							"steal"
 						]
 					},
 					options: {
@@ -68,7 +68,7 @@ return baseclass.extend({
 						},
 						cpu_wait: {
 							color: "ffb000",
-							title: "Wait"
+							title: "Wait I/O"
 						}
 					}
 				}
@@ -77,6 +77,7 @@ return baseclass.extend({
 			var percent = {
 				title: title,
 				y_min: "0",
+				y_max: "2",
 				alt_autoscale_max: true,
 				vlabel: "Percent",
 				number_format: "%5.1lf%%",
@@ -84,13 +85,13 @@ return baseclass.extend({
 					instances: {
 						percent: [
 							...(show_idle ? ["idle"] : []),
-							"interrupt",
 							"nice",
-							"softirq",
-							"steal",
-							"system",
 							"user",
-							"wait"
+							"wait",
+							"system",
+							"softirq",
+							"interrupt",
+							"steal"
 						]
 					},
 					options: {
@@ -124,7 +125,7 @@ return baseclass.extend({
 						},
 						percent_wait: {
 							color: "ffb000",
-							title: "Wait"
+							title: "Wait I/O"
 						}
 					}
 				}
@@ -142,6 +143,7 @@ return baseclass.extend({
 			p = {
 				title: title,
 				y_min: "0",
+				y_max: "2",
 				alt_autoscale_max: true,
 				vlabel: "Percent",
 				number_format: "%5.1lf%%",
